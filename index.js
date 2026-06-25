@@ -19,35 +19,22 @@ app.use(express.json()); // To parse JSON request bodies
 // show version fixed
 // list out all the endpoints
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  let databaseHealhty = false;
+  try {
+    const response = await pool.query('SELECT NOW()');
+    databaseHealhty = response.rows[0].now;
+  } catch (error) {
+    console.error('Database error on health check:', error);
+    databaseHealhty = false;
+  }
   res.status(200).json({
     success: true,
     message: 'Mock server is running',
     data: {
-      version: '1.0.2',
-      endpoints: [
-        '/api/success',
-        '/api/created',
-        '/api/no-content',
-        '/api/bad-request',
-        '/api/unauthorized',
-        '/api/forbidden',
-        '/api/not-found',
-        '/api/server-error',
-        '/api/bad-gateway',
-        '/api/status/:code',
-        '/api/delay/:ms',
-        '/api/echo',
-        '/api/flaky',
-        '/api/500/payout',
-        '/api/502/payout',
-        '/api/503/payout',
-        '/api/499/payout',
-        '/api/504/payout',
-        '/api/407/payout',
-        '/api/117/payout',
-        '/api/unknown-error/payout'
-      ]
+      version: '1.0.3',
+      // pool indicator of healtiness
+      database_health: databaseHealhty
     }
   });
 });
@@ -242,7 +229,7 @@ app.post('/api/unknown-error/payout', (req, res) => {
   });
 });
 // Create dynamic endpoint data
-app.post('/api/dynamic', async (req, res) => {
+app.post('/api/apis', async (req, res) => {
   try {
     const { status_code, response, label } = req.body;
 
@@ -275,7 +262,7 @@ app.post('/api/dynamic', async (req, res) => {
 });
 
 // Update dynamic endpoint data
-app.patch('/api/dynamic/:id', async (req, res) => {
+app.patch('/api/apis/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status_code, response, label } = req.body;
@@ -306,7 +293,7 @@ app.patch('/api/dynamic/:id', async (req, res) => {
 });
 
 // Get dynamic endpoint config
-app.get('/api/dynamic/:id', async (req, res) => {
+app.get('/api/apis/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query('SELECT * FROM apis WHERE id = $1', [id]);
@@ -333,7 +320,7 @@ app.get('/api/dynamic/:id', async (req, res) => {
   }
 });
 
-app.all('/api/dynamic/call/:id/*path', async (req, res) => {
+app.all('/api/dynamic/:id/*path', async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query('SELECT status_code, response FROM apis WHERE id = $1', [id]);
