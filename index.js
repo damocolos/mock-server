@@ -305,7 +305,35 @@ app.patch('/api/dynamic/:id', async (req, res) => {
   }
 });
 
-app.all('/api/dynamic/:id/:ignorethisparam', async (req, res) => {
+// Get dynamic endpoint config
+app.get('/api/dynamic/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query('SELECT * FROM apis WHERE id = $1', [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'API configuration not found in database.'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: rows[0]
+    });
+  } catch (err) {
+    console.error('Database error on get:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch API configuration.'
+    });
+  }
+});
+
+app.all('/api/dynamic/:id/*', async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query('SELECT status_code, response FROM apis WHERE id = $1', [id]);
