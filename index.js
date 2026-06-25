@@ -1,5 +1,12 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,7 +24,7 @@ app.get('/', (req, res) => {
     success: true,
     message: 'Mock server is running',
     data: {
-      version: '1.0.1',
+      version: '1.0.2',
       endpoints: [
         '/api/success',
         '/api/created',
@@ -233,6 +240,63 @@ app.post('/api/unknown-error/payout', (req, res) => {
     error: 'Unknown Error',
     message: 'Unknown error.'
   });
+});
+
+
+// Update dynamic endpoint data
+app.patch('/api/dynamic/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status_code, response, label } = req.body;
+    
+    // Update only the fields that are provided
+    const { rowCount } = await pool.query(
+      'UPDATE apis SET status_code = COALESCE($1, status_code), response = COALESCE($2, response), label = COALESCE($3, label) WHERE id = $4',
+      [status_code, response ? JSON.stringify(response) : null, label, id]
+    );
+
+    if (rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'API configuration not found in database.'
+      });
+    }
+
+    res.json({ success: true, message: 'API configuration updated successfully.' });
+  } catch (err) {
+    console.error('Database error on update:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to update API configuration.'
+    });
+  }
+});
+
+app.all('/api/dynamic/:id/:ignorethisparam', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rows } = await pool.query('SELECT status_code, response FROM apis WHERE id = $1', [id]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'API configuration not found in database.'
+      });
+    }
+
+    const api = rows[0];
+    res.status(api.status_code).json(api.response);
+  } catch (err) {
+    console.error('Database error:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch API configuration from database.'
+    });
+  }
 });
 
 // Fallback for any other route
