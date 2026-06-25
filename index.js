@@ -10,13 +10,37 @@ app.use(express.json()); // To parse JSON request bodies
 
 // --- Entry point ---
 // show version fixed
+// list out all the endpoints
 
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'Mock server is running',
     data: {
-      version: '1.0.0'
+      version: '1.0.1',
+      endpoints: [
+        '/api/success',
+        '/api/created',
+        '/api/no-content',
+        '/api/bad-request',
+        '/api/unauthorized',
+        '/api/forbidden',
+        '/api/not-found',
+        '/api/server-error',
+        '/api/bad-gateway',
+        '/api/status/:code',
+        '/api/delay/:ms',
+        '/api/echo',
+        '/api/flaky',
+        '/api/500/payout',
+        '/api/502/payout',
+        '/api/503/payout',
+        '/api/499/payout',
+        '/api/504/payout',
+        '/api/407/payout',
+        '/api/117/payout',
+        '/api/unknown-error/payout'
+      ]
     }
   });
 });
@@ -195,7 +219,15 @@ app.post('/api/504/payout', (req, res) => {
   });
 });
 
-app.post('/api/407/payout', (req, res) => {
+app.post('/api/117/payout', (req, res) => {
+  res.status(117).json({
+    success: false,
+    error: 'Unknown Error',
+    message: 'Unknown error.'
+  });
+});
+
+app.post('/api/unknown-error/payout', (req, res) => {
   res.status(407).json({
     success: false,
     error: 'Unknown Error',
