@@ -241,7 +241,38 @@ app.post('/api/unknown-error/payout', (req, res) => {
     message: 'Unknown error.'
   });
 });
+// Create dynamic endpoint data
+app.post('/api/dynamic', async (req, res) => {
+  try {
+    const { status_code, response, label } = req.body;
+    
+    if (status_code === undefined || response === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'status_code and response are required.'
+      });
+    }
 
+    const { rows } = await pool.query(
+      'INSERT INTO apis (status_code, response, label) VALUES ($1, $2, $3) RETURNING *',
+      [status_code, JSON.stringify(response), label || null]
+    );
+
+    res.status(201).json({
+      success: true,
+      message: 'API configuration created successfully.',
+      data: rows[0]
+    });
+  } catch (err) {
+    console.error('Database error on create:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to create API configuration.'
+    });
+  }
+});
 
 // Update dynamic endpoint data
 app.patch('/api/dynamic/:id', async (req, res) => {
