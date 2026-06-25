@@ -8,6 +8,19 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json()); // To parse JSON request bodies
 
+// --- Entry point ---
+// show version fixed
+
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'Mock server is running',
+    data: {
+      version: '1.0.0'
+    }
+  });
+});
+
 // --- Mock API Endpoints ---
 
 // 1. Success Responses
