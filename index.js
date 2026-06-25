@@ -245,7 +245,7 @@ app.post('/api/unknown-error/payout', (req, res) => {
 app.post('/api/dynamic', async (req, res) => {
   try {
     const { status_code, response, label } = req.body;
-    
+
     if (status_code === undefined || response === undefined) {
       return res.status(400).json({
         success: false,
@@ -279,7 +279,7 @@ app.patch('/api/dynamic/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status_code, response, label } = req.body;
-    
+
     // Update only the fields that are provided
     const { rowCount } = await pool.query(
       'UPDATE apis SET status_code = COALESCE($1, status_code), response = COALESCE($2, response), label = COALESCE($3, label) WHERE id = $4',
@@ -333,7 +333,7 @@ app.get('/api/dynamic/:id', async (req, res) => {
   }
 });
 
-app.all('/api/dynamic/:id/*', async (req, res) => {
+app.all('/api/dynamic/call/:id/*', async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query('SELECT status_code, response FROM apis WHERE id = $1', [id]);
