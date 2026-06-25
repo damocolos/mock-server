@@ -333,7 +333,7 @@ app.get('/api/dynamic/:id', async (req, res) => {
   }
 });
 
-app.all('/api/dynamic/call/:id/*', async (req, res) => {
+app.all('/api/dynamic/call/:id/*path', async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query('SELECT status_code, response FROM apis WHERE id = $1', [id]);
