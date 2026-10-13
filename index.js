@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const { Pool } = require('pg');
 
 const pool = new Pool({
@@ -14,10 +15,32 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json()); // To parse JSON request bodies
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Documentation route
+app.get(['/docs', '/docs/'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'docs.html'));
+});
 
 // --- Entry point ---
 // show version fixed
 // list out all the endpoints
+
+const sendMockResponse = (res, statusCode, body) => {
+  if (statusCode >= 100 && statusCode < 200) {
+    const bodyStr = typeof body === 'object' ? JSON.stringify(body) : body;
+    res.socket.write(
+      `HTTP/1.1 ${statusCode} Custom\r\n` +
+      `Content-Type: application/json\r\n` +
+      `Access-Control-Allow-Origin: *\r\n` +
+      `Connection: close\r\n\r\n` +
+      bodyStr
+    );
+    res.socket.destroy();
+  } else {
+    res.status(statusCode).json(body);
+  }
+};
 
 app.get('/', async (req, res) => {
   let databaseHealhty = false;
@@ -34,7 +57,8 @@ app.get('/', async (req, res) => {
     data: {
       version: '1.0.3',
       // pool indicator of healtiness
-      database_health: databaseHealhty
+      database_health: databaseHealhty,
+      documentation: '/docs'
     }
   });
 });
@@ -132,7 +156,7 @@ app.all('/api/status/:code', (req, res) => {
     });
   }
 
-  res.status(code).json({
+  sendMockResponse(res, code, {
     success: code >= 200 && code < 300,
     message: `Returned status code ${code}`
   });
@@ -214,7 +238,7 @@ app.post('/api/504/payout', (req, res) => {
 });
 
 app.post('/api/117/payout', (req, res) => {
-  res.status(117).json({
+  sendMockResponse(res, 117, {
     success: false,
     error: 'Unknown Error',
     message: 'Unknown error.'
@@ -229,7 +253,7 @@ app.post('/api/unknown-error/payout', (req, res) => {
   });
 });
 // Create dynamic endpoint data
-app.post('/api/apis', async (req, res) => {
+app.post('/api/mocks', async (req, res) => {
   try {
     const { status_code, response, label } = req.body;
 
@@ -262,7 +286,7 @@ app.post('/api/apis', async (req, res) => {
 });
 
 // Update dynamic endpoint data
-app.patch('/api/apis/:id', async (req, res) => {
+app.patch('/api/mocks/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { status_code, response, label } = req.body;
@@ -293,7 +317,7 @@ app.patch('/api/apis/:id', async (req, res) => {
 });
 
 // Get dynamic endpoint config
-app.get('/api/apis/:id', async (req, res) => {
+app.get('/api/mocks/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query('SELECT * FROM apis WHERE id = $1', [id]);
@@ -320,7 +344,7 @@ app.get('/api/apis/:id', async (req, res) => {
   }
 });
 
-app.all('/api/dynamic/:id/*path', async (req, res) => {
+app.all(['/api/dynamic/:id', '/api/dynamic/:id/*path'], async (req, res) => {
   try {
     const { id } = req.params;
     const { rows } = await pool.query('SELECT status_code, response FROM apis WHERE id = $1', [id]);
@@ -333,11 +357,13 @@ app.all('/api/dynamic/:id/*path', async (req, res) => {
       });
     }
 
+    console.log(rows);
+
     const api = rows[0];
-    res.status(api.status_code).json(api.response);
+    sendMockResponse(res, api.status_code, api.response);
   } catch (err) {
     console.error('Database error:', err);
-    res.status(500).json({
+    sendMockResponse(res, 500, {
       success: false,
       error: 'Internal Server Error',
       message: 'Failed to fetch API configuration from database.'
@@ -359,6 +385,11 @@ if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`Mock server is running on http://localhost:${PORT}`);
     console.log('Available endpoints:');
+    console.log('  GET  /docs (API Documentation Page)');
+    console.log('  POST /api/mocks');
+    console.log('  GET  /api/mocks/:id');
+    console.log('  PATCH /api/mocks/:id');
+    console.log('  ALL  /api/dynamic/:id/*path');
     console.log('  GET  /api/success');
     console.log('  POST /api/created');
     console.log('  GET  /api/no-content');

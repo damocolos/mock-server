@@ -1,0 +1,2134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mock Server API Documentation</title>
+  <meta name="description" content="Official documentation and interactive developer playground for the Dynamic Mock API Server.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #080b11;
+      --bg-surface: #0e131f;
+      --bg-elevated: #151c2e;
+      --bg-overlay: #1c253d;
+      --bg-input: #0a0e17;
+      
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      --border-glow: rgba(99, 102, 241, 0.2);
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99, 102, 241, 0.25);
+      
+      --color-post: #10b981;
+      --color-post-bg: rgba(16, 185, 129, 0.12);
+      --color-post-border: rgba(16, 185, 129, 0.28);
+      
+      --color-get: #3b82f6;
+      --color-get-bg: rgba(59, 130, 246, 0.12);
+      --color-get-border: rgba(59, 130, 246, 0.28);
+      
+      --color-patch: #f59e0b;
+      --color-patch-bg: rgba(245, 158, 11, 0.12);
+      --color-patch-border: rgba(245, 158, 11, 0.28);
+      
+      --color-all: #a855f7;
+      --color-all-bg: rgba(168, 85, 247, 0.12);
+      --color-all-border: rgba(168, 85, 247, 0.28);
+
+      --color-danger: #ef4444;
+      --color-danger-bg: rgba(239, 68, 68, 0.12);
+      
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 18px;
+      
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+      --shadow-glow: 0 0 35px rgba(99, 102, 241, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+    }
+
+    /* Ambient background blur */
+    .ambient-glow {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 1000px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(6, 182, 212, 0.04) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Top Navbar */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(8, 11, 17, 0.82);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .navbar-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-md);
+      background: linear-gradient(135deg, #6366f1, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+    }
+
+    .brand-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: #ffffff;
+    }
+
+    .brand-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .version-tag {
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      padding: 0.15rem 0.5rem;
+      border-radius: 9999px;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 0.35rem 0.75rem;
+      border-radius: 9999px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulse-dot 2s infinite ease-in-out;
+    }
+
+    .status-dot.disconnected {
+      background: #f59e0b;
+      box-shadow: 0 0 10px #f59e0b;
+    }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      padding: 0.45rem 0.85rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 500;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Layout Container */
+    .app-layout {
+      position: relative;
+      z-index: 1;
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 270px 1fr;
+      gap: 2rem;
+      padding: 2rem 1.5rem 4rem 1.5rem;
+      flex: 1;
+    }
+
+    /* Left Sidebar */
+    .sidebar {
+      position: sticky;
+      top: 5rem;
+      height: calc(100vh - 6.5rem);
+      overflow-y: auto;
+      padding-right: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 4px;
+    }
+    .sidebar::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .nav-group-title {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 0.5rem;
+      padding-left: 0.5rem;
+    }
+
+    .nav-links {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      padding: 0.55rem 0.75rem;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: all 0.15s ease;
+      border-left: 2px solid transparent;
+    }
+
+    .nav-link:hover {
+      color: var(--text-main);
+      background: var(--bg-surface);
+    }
+
+    .nav-link.active {
+      color: #ffffff;
+      background: var(--bg-surface);
+      border-left-color: var(--primary);
+      font-weight: 600;
+    }
+
+    .method-pill {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 0.1rem 0.4rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: 0.02em;
+    }
+
+    .pill-post { color: var(--color-post); background: var(--color-post-bg); }
+    .pill-get { color: var(--color-get); background: var(--color-get-bg); }
+    .pill-patch { color: var(--color-patch); background: var(--color-patch-bg); }
+    .pill-all { color: var(--color-all); background: var(--color-all-bg); }
+
+    .sidebar-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1rem;
+    }
+
+    .sidebar-card h4 {
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .recent-ids-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .recent-id-item {
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      padding: 0.35rem 0.5rem;
+      border-radius: var(--radius-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.15s;
+    }
+
+    .recent-id-item:hover {
+      border-color: var(--primary);
+      color: var(--text-main);
+    }
+
+    /* Main Content */
+    .main-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2.5rem;
+      min-width: 0;
+    }
+
+    /* Hero Section */
+    .hero-card {
+      background: linear-gradient(135deg, rgba(20, 27, 45, 0.8) 0%, rgba(14, 19, 31, 0.95) 100%);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: var(--radius-xl);
+      padding: 2.2rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-glow);
+    }
+
+    .hero-card::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .hero-title {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 0.75rem;
+      background: linear-gradient(135deg, #ffffff 40%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-desc {
+      font-size: 1.02rem;
+      color: var(--text-muted);
+      max-width: 750px;
+      margin-bottom: 1.5rem;
+    }
+
+    .workflow-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+
+    .workflow-step {
+      background: rgba(10, 14, 23, 0.6);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.1rem;
+      position: relative;
+    }
+
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .workflow-step h4 {
+      font-size: 0.92rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+      color: var(--text-main);
+    }
+
+    .workflow-step p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Section Headers */
+    .section-title {
+      font-size: 1.45rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .section-desc {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Endpoint Card */
+    .endpoint-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.8rem;
+      scroll-margin-top: 5.5rem;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .endpoint-card:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .endpoint-card.focused {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 25px rgba(99, 102, 241, 0.15);
+    }
+
+    .endpoint-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .endpoint-badge-path {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.95rem;
+    }
+
+    .method-tag {
+      font-weight: 800;
+      font-size: 0.78rem;
+      padding: 0.3rem 0.7rem;
+      border-radius: var(--radius-sm);
+      letter-spacing: 0.05em;
+    }
+
+    .method-tag.post { background: var(--color-post-bg); color: var(--color-post); border: 1px solid var(--color-post-border); }
+    .method-tag.get { background: var(--color-get-bg); color: var(--color-get); border: 1px solid var(--color-get-border); }
+    .method-tag.patch { background: var(--color-patch-bg); color: var(--color-patch); border: 1px solid var(--color-patch-border); }
+    .method-tag.all { background: var(--color-all-bg); color: var(--color-all); border: 1px solid var(--color-all-border); }
+
+    .endpoint-path {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .param-highlight {
+      color: #38bdf8;
+    }
+
+    .wildcard-highlight {
+      color: #c084fc;
+    }
+
+    .copy-path-btn {
+      background: transparent;
+      border: 1px solid var(--border-subtle);
+      color: var(--text-dim);
+      padding: 0.35rem 0.65rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.78rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.15s;
+    }
+
+    .copy-path-btn:hover {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .endpoint-summary {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      margin-bottom: 1.5rem;
+    }
+
+    /* Specs Tables */
+    .specs-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-dim);
+      margin: 1.25rem 0 0.6rem 0;
+    }
+
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      margin-bottom: 1.25rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    th {
+      background: rgba(10, 14, 23, 0.8);
+      color: var(--text-dim);
+      font-weight: 600;
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    td code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #38bdf8;
+      background: rgba(56, 189, 248, 0.1);
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+    }
+
+    .badge-req {
+      color: #f43f5e;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .badge-opt {
+      color: var(--text-dim);
+      font-size: 0.72rem;
+    }
+
+    /* Code Snippets & Tabs */
+    .code-tabs-wrapper {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    .tabs-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(14, 19, 31, 0.9);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 0.5rem;
+    }
+
+    .tab-buttons {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      padding: 0.65rem 0.9rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.15s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-muted);
+    }
+
+    .tab-btn.active {
+      color: #ffffff;
+    }
+
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary);
+    }
+
+    .tab-copy-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 0.4rem 0.6rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: color 0.15s;
+    }
+
+    .tab-copy-btn:hover {
+      color: var(--text-main);
+    }
+
+    .code-block {
+      padding: 1.1rem;
+      margin: 0;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      line-height: 1.6;
+      background: #090d16;
+    }
+
+    /* Interactive Playground / Console */
+    .tester-panel {
+      background: linear-gradient(180deg, var(--bg-elevated) 0%, rgba(14, 19, 31, 0.95) 100%);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      border-radius: var(--radius-lg);
+      padding: 1.4rem;
+      margin-top: 1.5rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .tester-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.1rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .tester-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tester-title svg {
+      color: var(--primary);
+    }
+
+    .presets-container {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+    }
+
+    .preset-label {
+      font-size: 0.72rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-right: 0.2rem;
+    }
+
+    .preset-btn {
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 0.2rem 0.55rem;
+      border-radius: 9999px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .preset-btn:hover {
+      background: var(--bg-overlay);
+      color: var(--text-main);
+      border-color: rgba(99, 102, 241, 0.4);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .input-field, .textarea-field, .select-field {
+      width: 100%;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.6rem 0.8rem;
+      color: var(--text-main);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    .input-field:focus, .textarea-field:focus, .select-field:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    .textarea-field {
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: #ffffff;
+      border: none;
+      padding: 0.65rem 1.3rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+      transition: all 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary:active {
+      transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Response Viewer */
+    .response-view {
+      margin-top: 1.25rem;
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 1rem;
+      display: none;
+    }
+
+    .response-view.visible {
+      display: block;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .response-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.65rem;
+    }
+
+    .response-meta {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .res-status-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.55rem;
+      border-radius: 4px;
+    }
+
+    .res-status-2xx { background: var(--color-post-bg); color: var(--color-post); border: 1px solid var(--color-post-border); }
+    .res-status-4xx { background: var(--color-patch-bg); color: var(--color-patch); border: 1px solid var(--color-patch-border); }
+    .res-status-5xx { background: var(--color-danger-bg); color: var(--color-danger); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    .res-time {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .response-json {
+      background: #060910;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.9rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      max-height: 280px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Dynamic Method Bar in Playground */
+    .dynamic-input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .method-select {
+      width: 110px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 0.6rem 0.6rem;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Toast Notification */
+    .toast {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      background: var(--bg-overlay);
+      border: 1px solid rgba(99, 102, 241, 0.4);
+      color: #ffffff;
+      padding: 0.75rem 1.25rem;
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      z-index: 100;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-subtle);
+      padding: 2rem 1.5rem;
+      background: var(--bg-surface);
+      margin-top: auto;
+    }
+
+    .footer-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 1.5rem;
+      list-style: none;
+    }
+
+    .footer-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .footer-links a:hover {
+      color: var(--text-main);
+    }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .app-layout {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        display: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .navbar-container {
+        padding: 0.75rem 1rem;
+      }
+      .app-layout {
+        padding: 1rem;
+      }
+      .hero-title {
+        font-size: 1.6rem;
+      }
+      .endpoint-card {
+        padding: 1.2rem;
+      }
+      .dynamic-input-row {
+        flex-direction: column;
+      }
+      .method-select {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow"></div>
+
+  <!-- Top Navigation -->
+  <header>
+    <div class="navbar-container">
+      <a href="/docs" class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-title">
+          Dynamic Mock Server
+          <span class="version-tag">v1.0.3</span>
+        </div>
+      </a>
+
+      <div class="nav-actions">
+        <div class="status-badge" id="db-health-badge" title="Database Health Status">
+          <span class="status-dot" id="db-health-dot"></span>
+          <span id="db-health-text">Checking DB...</span>
+        </div>
+        <a href="/" class="btn-secondary" title="View Root JSON Status" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+          Health JSON
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div>
+        <div class="nav-group-title">Getting Started</div>
+        <ul class="nav-links">
+          <li><a href="#overview" class="nav-link active">Overview & Flow</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="nav-group-title">Dynamic Endpoints</div>
+        <ul class="nav-links">
+          <li>
+            <a href="#endpoint-create" class="nav-link">
+              <span class="method-pill pill-post">POST</span>
+              /api/mocks
+            </a>
+          </li>
+          <li>
+            <a href="#endpoint-get" class="nav-link">
+              <span class="method-pill pill-get">GET</span>
+              /api/mocks/:id
+            </a>
+          </li>
+          <li>
+            <a href="#endpoint-update" class="nav-link">
+              <span class="method-pill pill-patch">PATCH</span>
+              /api/mocks/:id
+            </a>
+          </li>
+          <li>
+            <a href="#endpoint-dynamic" class="nav-link">
+              <span class="method-pill pill-all">ALL</span>
+              /api/dynamic/:id/*
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Recent Mocks Widget -->
+      <div class="sidebar-card">
+        <h4>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          Recent Mock IDs
+        </h4>
+        <ul class="recent-ids-list" id="recent-ids-list">
+          <li style="font-size: 0.72rem; color: var(--text-dim);">No mocks created yet in this session.</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- Hero / Overview -->
+      <section id="overview" class="hero-card">
+        <h1 class="hero-title">Dynamic Mock API Engine</h1>
+        <p class="hero-desc">
+          Build and test robust client applications with instantaneous mock responses. Create custom status codes and payloads on demand, then trigger them via wildcard paths and any HTTP verb.
+        </p>
+
+        <div class="workflow-steps">
+          <div class="workflow-step">
+            <div class="step-num">1</div>
+            <h4>Register API Mock</h4>
+            <p>Send a <code>POST /api/mocks</code> request specifying your desired HTTP <code>status_code</code> and <code>response</code> JSON payload. Receive a generated UUID.</p>
+          </div>
+          <div class="workflow-step">
+            <div class="step-num">2</div>
+            <h4>Invoke Wildcard Path</h4>
+            <p>Call <code>/api/dynamic/:id/*path</code> using any HTTP method (GET, POST, PUT, DELETE, etc.). The server returns your exact configured mock response.</p>
+          </div>
+          <div class="workflow-step">
+            <div class="step-num">3</div>
+            <h4>Update On The Fly</h4>
+            <p>Use <code>PATCH /api/mocks/:id</code> anytime to alter the returned status code or payload without needing to recreate the endpoint or reconfigure client URLs.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ENDPOINT 1: POST /api/mocks -->
+      <section id="endpoint-create" class="endpoint-card">
+        <div class="endpoint-header">
+          <div class="endpoint-badge-path">
+            <span class="method-tag post">POST</span>
+            <span class="endpoint-path">/api/mocks</span>
+          </div>
+          <button class="copy-path-btn" onclick="copyText('/api/mocks', this)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy Route
+          </button>
+        </div>
+
+        <p class="endpoint-summary">
+          Creates a new dynamic mock endpoint configuration in the database. Returns a unique UUID <code>id</code> that you can invoke via <code>/api/dynamic/:id/*path</code>.
+        </p>
+
+        <div class="specs-title">Request Body (JSON)</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Type</th>
+                <th>Requirement</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>status_code</code></td>
+                <td>Integer</td>
+                <td><span class="badge-req">Required</span></td>
+                <td>HTTP status code to return when triggered (e.g. <code>200</code>, <code>201</code>, <code>400</code>, <code>404</code>, <code>500</code>).</td>
+              </tr>
+              <tr>
+                <td><code>response</code></td>
+                <td>JSON / Object</td>
+                <td><span class="badge-req">Required</span></td>
+                <td>The payload returned in the mock response body. Can be an object, array, or JSON primitive.</td>
+              </tr>
+              <tr>
+                <td><code>label</code></td>
+                <td>String</td>
+                <td><span class="badge-opt">Optional</span></td>
+                <td>Human-readable label or description for this mock (e.g. <code>"Order Created 201"</code>).</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="specs-title">Code Examples</div>
+        <div class="code-tabs-wrapper">
+          <div class="tabs-header">
+            <div class="tab-buttons">
+              <button class="tab-btn active" onclick="switchTab(this, 'create-curl')">cURL</button>
+              <button class="tab-btn" onclick="switchTab(this, 'create-js')">JavaScript</button>
+              <button class="tab-btn" onclick="switchTab(this, 'create-py')">Python</button>
+            </div>
+            <button class="tab-copy-btn" onclick="copySnippet('create-code')">Copy</button>
+          </div>
+          <pre class="code-block" id="create-code">curl -X POST &quot;{ORIGIN}/api/mocks&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;status_code&quot;: 200,
+    &quot;label&quot;: &quot;User Profile Success&quot;,
+    &quot;response&quot;: {
+      &quot;id&quot;: 101,
+      &quot;name&quot;: &quot;Jane Doe&quot;,
+      &quot;status&quot;: &quot;active&quot;
+    }
+  }'</pre>
+        </div>
+
+        <!-- Interactive Playground for POST /api/mocks -->
+        <div class="tester-panel">
+          <div class="tester-header">
+            <div class="tester-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Interactive Console &middot; Create Mock
+            </div>
+            <div class="presets-container">
+              <span class="preset-label">Presets:</span>
+              <button class="preset-btn" onclick="applyCreatePreset(200, 'User Profile Success', { id: 101, name: 'Jane Doe', status: 'active' })">200 OK</button>
+              <button class="preset-btn" onclick="applyCreatePreset(201, 'Resource Created', { message: 'Item created', item_id: 'item_99' })">201 Created</button>
+              <button class="preset-btn" onclick="applyCreatePreset(400, 'Bad Request Error', { success: false, error: 'Validation failed', fields: ['email'] })">400 Bad Req</button>
+              <button class="preset-btn" onclick="applyCreatePreset(401, 'Unauthorized', { success: false, error: 'Token expired' })">401 Auth</button>
+              <button class="preset-btn" onclick="applyCreatePreset(500, 'Internal Server Error', { success: false, error: 'Database timeout' })">500 Error</button>
+              <button class="preset-btn" onclick="applyCreatePreset(504, 'Gateway Timeout', { success: false, error: 'Upstream PSP timeout' })">504 Timeout</button>
+            </div>
+          </div>
+
+          <form id="form-create-mock" onsubmit="handleCreateMock(event)">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label" for="create-status-code">Status Code</label>
+                <input type="number" id="create-status-code" class="input-field" value="200" required min="100" max="599">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="create-label">Label (Optional)</label>
+                <input type="text" id="create-label" class="input-field" value="User Profile Success" placeholder="e.g. User Profile Success">
+              </div>
+              <div class="form-group full-width">
+                <label class="form-label" for="create-response-body">Response Body (JSON)</label>
+                <textarea id="create-response-body" class="textarea-field" required>{
+  "id": 101,
+  "name": "Jane Doe",
+  "status": "active"
+}</textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary" id="btn-create-submit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+              Execute POST /api/mocks
+            </button>
+          </form>
+
+          <div class="response-view" id="create-response-view">
+            <div class="response-header">
+              <div class="response-meta">
+                <span class="res-status-badge" id="create-res-status">201 Created</span>
+                <span class="res-time" id="create-res-time">0ms</span>
+              </div>
+              <button class="copy-path-btn" onclick="copyText(document.getElementById('create-res-json').innerText, this)">Copy JSON</button>
+            </div>
+            <pre class="response-json" id="create-res-json"></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ENDPOINT 2: GET /api/mocks/:id -->
+      <section id="endpoint-get" class="endpoint-card">
+        <div class="endpoint-header">
+          <div class="endpoint-badge-path">
+            <span class="method-tag get">GET</span>
+            <span class="endpoint-path">/api/mocks/<span class="param-highlight">:id</span></span>
+          </div>
+          <button class="copy-path-btn" onclick="copyText('/api/mocks/:id', this)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy Route
+          </button>
+        </div>
+
+        <p class="endpoint-summary">
+          Retrieves the stored configuration (status code, mock payload, label, and timestamp) for a given mock ID.
+        </p>
+
+        <div class="specs-title">Path Parameters</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Requirement</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>id</code></td>
+                <td>UUID</td>
+                <td><span class="badge-req">Required</span></td>
+                <td>The unique identifier generated during mock creation.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="specs-title">Code Examples</div>
+        <div class="code-tabs-wrapper">
+          <div class="tabs-header">
+            <div class="tab-buttons">
+              <button class="tab-btn active" onclick="switchTab(this, 'get-curl')">cURL</button>
+              <button class="tab-btn" onclick="switchTab(this, 'get-js')">JavaScript</button>
+              <button class="tab-btn" onclick="switchTab(this, 'get-py')">Python</button>
+            </div>
+            <button class="tab-copy-btn" onclick="copySnippet('get-code')">Copy</button>
+          </div>
+          <pre class="code-block" id="get-code">curl -X GET &quot;{ORIGIN}/api/mocks/&lt;MOCK_ID&gt;&quot;</pre>
+        </div>
+
+        <!-- Interactive Playground for GET /api/mocks/:id -->
+        <div class="tester-panel">
+          <div class="tester-header">
+            <div class="tester-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Interactive Console &middot; Retrieve Mock
+            </div>
+          </div>
+
+          <form id="form-get-mock" onsubmit="handleGetMock(event)">
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label class="form-label" for="get-mock-id">Mock UUID (:id)</label>
+                <input type="text" id="get-mock-id" class="input-field" placeholder="Enter mock UUID (e.g. 1b9d6bcd-bbfd-4b2d-9b5d-ab8dfbbd4bed)" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary" id="btn-get-submit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              Execute GET /api/mocks/:id
+            </button>
+          </form>
+
+          <div class="response-view" id="get-response-view">
+            <div class="response-header">
+              <div class="response-meta">
+                <span class="res-status-badge" id="get-res-status">200 OK</span>
+                <span class="res-time" id="get-res-time">0ms</span>
+              </div>
+              <button class="copy-path-btn" onclick="copyText(document.getElementById('get-res-json').innerText, this)">Copy JSON</button>
+            </div>
+            <pre class="response-json" id="get-res-json"></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ENDPOINT 3: PATCH /api/mocks/:id -->
+      <section id="endpoint-update" class="endpoint-card">
+        <div class="endpoint-header">
+          <div class="endpoint-badge-path">
+            <span class="method-tag patch">PATCH</span>
+            <span class="endpoint-path">/api/mocks/<span class="param-highlight">:id</span></span>
+          </div>
+          <button class="copy-path-btn" onclick="copyText('/api/mocks/:id', this)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy Route
+          </button>
+        </div>
+
+        <p class="endpoint-summary">
+          Partially updates an existing mock endpoint. You can change the returned status code, response payload, or label. Any unspecified fields retain their current values.
+        </p>
+
+        <div class="specs-title">Request Body (JSON)</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Type</th>
+                <th>Requirement</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>status_code</code></td>
+                <td>Integer</td>
+                <td><span class="badge-opt">Optional</span></td>
+                <td>New HTTP status code to return.</td>
+              </tr>
+              <tr>
+                <td><code>response</code></td>
+                <td>JSON / Object</td>
+                <td><span class="badge-opt">Optional</span></td>
+                <td>New response body payload.</td>
+              </tr>
+              <tr>
+                <td><code>label</code></td>
+                <td>String</td>
+                <td><span class="badge-opt">Optional</span></td>
+                <td>Updated label.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="specs-title">Code Examples</div>
+        <div class="code-tabs-wrapper">
+          <div class="tabs-header">
+            <div class="tab-buttons">
+              <button class="tab-btn active" onclick="switchTab(this, 'patch-curl')">cURL</button>
+              <button class="tab-btn" onclick="switchTab(this, 'patch-js')">JavaScript</button>
+              <button class="tab-btn" onclick="switchTab(this, 'patch-py')">Python</button>
+            </div>
+            <button class="tab-copy-btn" onclick="copySnippet('patch-code')">Copy</button>
+          </div>
+          <pre class="code-block" id="patch-code">curl -X PATCH &quot;{ORIGIN}/api/mocks/&lt;MOCK_ID&gt;&quot; \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;status_code&quot;: 500,
+    &quot;response&quot;: { &quot;error&quot;: &quot;Simulated outage&quot; }
+  }'</pre>
+        </div>
+
+        <!-- Interactive Playground for PATCH /api/mocks/:id -->
+        <div class="tester-panel">
+          <div class="tester-header">
+            <div class="tester-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Interactive Console &middot; Update Mock
+            </div>
+          </div>
+
+          <form id="form-patch-mock" onsubmit="handlePatchMock(event)">
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label class="form-label" for="patch-mock-id">Mock UUID (:id)</label>
+                <input type="text" id="patch-mock-id" class="input-field" placeholder="Enter mock UUID to update" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="patch-status-code">New Status Code (Optional)</label>
+                <input type="number" id="patch-status-code" class="input-field" placeholder="Leave empty to keep current" min="100" max="599">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="patch-label">New Label (Optional)</label>
+                <input type="text" id="patch-label" class="input-field" placeholder="Leave empty to keep current">
+              </div>
+              <div class="form-group full-width">
+                <label class="form-label" for="patch-response-body">New Response Body (JSON, Optional)</label>
+                <textarea id="patch-response-body" class="textarea-field" placeholder="Enter updated JSON response or leave blank"></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary" id="btn-patch-submit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 20h9"></path>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+              </svg>
+              Execute PATCH /api/mocks/:id
+            </button>
+          </form>
+
+          <div class="response-view" id="patch-response-view">
+            <div class="response-header">
+              <div class="response-meta">
+                <span class="res-status-badge" id="patch-res-status">200 OK</span>
+                <span class="res-time" id="patch-res-time">0ms</span>
+              </div>
+              <button class="copy-path-btn" onclick="copyText(document.getElementById('patch-res-json').innerText, this)">Copy JSON</button>
+            </div>
+            <pre class="response-json" id="patch-res-json"></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ENDPOINT 4: ALL /api/dynamic/:id/*path -->
+      <section id="endpoint-dynamic" class="endpoint-card">
+        <div class="endpoint-header">
+          <div class="endpoint-badge-path">
+            <span class="method-tag all">ALL</span>
+            <span class="endpoint-path">/api/dynamic/<span class="param-highlight">:id</span><span class="wildcard-highlight">/*path</span></span>
+          </div>
+          <button class="copy-path-btn" onclick="copyText('/api/dynamic/:id/*path', this)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            Copy Route
+          </button>
+        </div>
+
+        <p class="endpoint-summary">
+          <strong>The Mock Simulator Gateway:</strong> Accepts <em>ANY</em> HTTP verb (<code>GET</code>, <code>POST</code>, <code>PUT</code>, <code>DELETE</code>, <code>PATCH</code>, <code>OPTIONS</code>) and any nested subpath. Looks up the mock configuration by UUID and immediately returns the stored status code and response payload.
+        </p>
+
+        <div class="specs-title">Path Parameters</div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Requirement</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>id</code></td>
+                <td>UUID</td>
+                <td><span class="badge-req">Required</span></td>
+                <td>The unique ID of the mock definition to trigger.</td>
+              </tr>
+              <tr>
+                <td><code>*path</code></td>
+                <td>Wildcard String</td>
+                <td><span class="badge-opt">Optional</span></td>
+                <td>Any subpath or route (e.g. <code>/v1/users/42</code>, <code>/payments/charge</code>). Can also be left empty.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="specs-title">Code Examples</div>
+        <div class="code-tabs-wrapper">
+          <div class="tabs-header">
+            <div class="tab-buttons">
+              <button class="tab-btn active" onclick="switchTab(this, 'dynamic-curl')">cURL</button>
+              <button class="tab-btn" onclick="switchTab(this, 'dynamic-js')">JavaScript</button>
+              <button class="tab-btn" onclick="switchTab(this, 'dynamic-py')">Python</button>
+            </div>
+            <button class="tab-copy-btn" onclick="copySnippet('dynamic-code')">Copy</button>
+          </div>
+          <pre class="code-block" id="dynamic-code">curl -X GET &quot;{ORIGIN}/api/dynamic/&lt;MOCK_ID&gt;/v1/users/profile&quot;</pre>
+        </div>
+
+        <!-- Interactive Playground for ALL /api/dynamic/:id/*path -->
+        <div class="tester-panel">
+          <div class="tester-header">
+            <div class="tester-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              Live Simulator &middot; Trigger Mock Request
+            </div>
+          </div>
+
+          <form id="form-dynamic-mock" onsubmit="handleExecuteDynamic(event)">
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label class="form-label" for="dyn-mock-id">Mock UUID (:id)</label>
+                <input type="text" id="dyn-mock-id" class="input-field" placeholder="Enter mock UUID to invoke" required>
+              </div>
+
+              <div class="form-group full-width">
+                <label class="form-label">HTTP Method & Subpath (/*path)</label>
+                <div class="dynamic-input-row">
+                  <select id="dyn-method" class="method-select" onchange="toggleBodyVisibility()">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="PATCH">PATCH</option>
+                    <option value="DELETE">DELETE</option>
+                    <option value="OPTIONS">OPTIONS</option>
+                  </select>
+                  <input type="text" id="dyn-subpath" class="input-field" value="/v1/users/profile" placeholder="/subpath/example (optional)">
+                </div>
+              </div>
+
+              <div class="form-group full-width" id="dyn-body-group" style="display: none;">
+                <label class="form-label" for="dyn-req-body">Request Body (JSON, Optional)</label>
+                <textarea id="dyn-req-body" class="textarea-field" placeholder='{ "test": true }'></textarea>
+              </div>
+            </div>
+
+            <button type="submit" class="btn-primary" id="btn-dynamic-submit">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polygon points="10 8 16 12 10 16 10 8"></polygon>
+              </svg>
+              Send Request to Mock Gateway
+            </button>
+          </form>
+
+          <div class="response-view" id="dynamic-response-view">
+            <div class="response-header">
+              <div class="response-meta">
+                <span class="res-status-badge" id="dynamic-res-status">200 OK</span>
+                <span class="res-time" id="dynamic-res-time">0ms</span>
+              </div>
+              <button class="copy-path-btn" onclick="copyText(document.getElementById('dynamic-res-json').innerText, this)">Copy Response</button>
+            </div>
+            <pre class="response-json" id="dynamic-res-json"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    <span id="toast-message">Copied to clipboard</span>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-container">
+      <div>Dynamic Mock API Engine &bull; Ready for Vercel Serverless</div>
+      <ul class="footer-links">
+        <li><a href="#overview">Overview</a></li>
+        <li><a href="#endpoint-create">Create Mock</a></li>
+        <li><a href="#endpoint-dynamic">Dynamic Gateway</a></li>
+        <li><a href="/">Health API</a></li>
+      </ul>
+    </div>
+  </footer>
+
+  <script>
+    const ORIGIN = window.location.origin;
+    let recentMockIds = [];
+
+    // Initialize Page
+    document.addEventListener('DOMContentLoaded', () => {
+      checkDbHealth();
+      updateCodeSnippets();
+      loadRecentMocks();
+      highlightActiveNavOnScroll();
+    });
+
+    // Check Database Health
+    async function checkDbHealth() {
+      const dot = document.getElementById('db-health-dot');
+      const text = document.getElementById('db-health-text');
+      try {
+        const res = await fetch('/?t=' + Date.now());
+        const data = await res.json();
+        if (data.data && data.data.database_health) {
+          dot.className = 'status-dot';
+          text.textContent = 'PostgreSQL: Healthy';
+        } else {
+          dot.className = 'status-dot disconnected';
+          text.textContent = 'DB: Disconnected / Standby';
+        }
+      } catch (err) {
+        dot.className = 'status-dot disconnected';
+        text.textContent = 'Server Status: Offline';
+      }
+    }
+
+    // Toggle request body field in dynamic tester
+    function toggleBodyVisibility() {
+      const method = document.getElementById('dyn-method').value;
+      const bodyGroup = document.getElementById('dyn-body-group');
+      if (['POST', 'PUT', 'PATCH'].includes(method)) {
+        bodyGroup.style.display = 'flex';
+      } else {
+        bodyGroup.style.display = 'none';
+      }
+    }
+
+    // Toast Feedback
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const text = document.getElementById('toast-message');
+      text.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+
+    function copyText(val, btn) {
+      const finalVal = val.startsWith('/') ? ORIGIN + val : val;
+      navigator.clipboard.writeText(finalVal).then(() => {
+        showToast('Copied: ' + finalVal);
+        if (btn) {
+          const originalText = btn.innerHTML;
+          btn.innerHTML = 'Copied!';
+          setTimeout(() => { btn.innerHTML = originalText; }, 1500);
+        }
+      });
+    }
+
+    function copySnippet(elementId) {
+      const code = document.getElementById(elementId).innerText;
+      navigator.clipboard.writeText(code).then(() => {
+        showToast('Code snippet copied to clipboard');
+      });
+    }
+
+    // Presets for POST /api/mocks
+    function applyCreatePreset(statusCode, label, responseObj) {
+      document.getElementById('create-status-code').value = statusCode;
+      document.getElementById('create-label').value = label;
+      document.getElementById('create-response-body').value = JSON.stringify(responseObj, null, 2);
+    }
+
+    // Save and Display Recent Mocks
+    function saveRecentMock(id, label, statusCode) {
+      const existing = recentMockIds.find(m => m.id === id);
+      if (!existing) {
+        recentMockIds.unshift({ id, label: label || `Status ${statusCode}`, statusCode });
+        if (recentMockIds.length > 5) recentMockIds.pop();
+        try {
+          localStorage.setItem('recent_mocks', JSON.stringify(recentMockIds));
+        } catch (e) {}
+      }
+      renderRecentMocks();
+      // Auto-fill into other inputs for convenience
+      document.getElementById('get-mock-id').value = id;
+      document.getElementById('patch-mock-id').value = id;
+      document.getElementById('dyn-mock-id').value = id;
+    }
+
+    function loadRecentMocks() {
+      try {
+        const stored = localStorage.getItem('recent_mocks');
+        if (stored) {
+          recentMockIds = JSON.parse(stored);
+          renderRecentMocks();
+          if (recentMockIds.length > 0) {
+            const firstId = recentMockIds[0].id;
+            document.getElementById('get-mock-id').value = firstId;
+            document.getElementById('patch-mock-id').value = firstId;
+            document.getElementById('dyn-mock-id').value = firstId;
+          }
+        }
+      } catch (e) {}
+    }
+
+    function renderRecentMocks() {
+      const list = document.getElementById('recent-ids-list');
+      if (recentMockIds.length === 0) {
+        list.innerHTML = '<li style="font-size: 0.72rem; color: var(--text-dim);">No mocks created yet.</li>';
+        return;
+      }
+      list.innerHTML = recentMockIds.map(m => `
+        <li class="recent-id-item" onclick="selectMockId('${m.id}')" title="${m.label}">
+          <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 150px;">
+            ${m.id.substring(0, 8)}... (${m.statusCode})
+          </span>
+          <span style="color: var(--primary); font-size: 0.7rem;">Use &rarr;</span>
+        </li>
+      `).join('');
+    }
+
+    function selectMockId(id) {
+      document.getElementById('get-mock-id').value = id;
+      document.getElementById('patch-mock-id').value = id;
+      document.getElementById('dyn-mock-id').value = id;
+      showToast('Mock ID populated in testers');
+    }
+
+    // Format Status Badge
+    function updateStatusBadge(badgeEl, status) {
+      badgeEl.textContent = `${status}`;
+      badgeEl.className = 'res-status-badge';
+      if (status >= 200 && status < 300) {
+        badgeEl.classList.add('res-status-2xx');
+      } else if (status >= 400 && status < 500) {
+        badgeEl.classList.add('res-status-4xx');
+      } else {
+        badgeEl.classList.add('res-status-5xx');
+      }
+    }
+
+    // 1. Submit POST /api/mocks
+    async function handleCreateMock(e) {
+      e.preventDefault();
+      const btn = document.getElementById('btn-create-submit');
+      const statusCode = parseInt(document.getElementById('create-status-code').value, 10);
+      const label = document.getElementById('create-label').value.trim();
+      const bodyRaw = document.getElementById('create-response-body').value;
+
+      let parsedResponse;
+      try {
+        parsedResponse = JSON.parse(bodyRaw);
+      } catch (err) {
+        alert('Invalid JSON in Response Body. Please verify syntax.');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Creating...';
+      const startTime = performance.now();
+
+      try {
+        const res = await fetch('/api/mocks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status_code: statusCode,
+            label: label || undefined,
+            response: parsedResponse
+          })
+        });
+
+        const duration = Math.round(performance.now() - startTime);
+        const data = await res.json();
+
+        const view = document.getElementById('create-response-view');
+        const statusBadge = document.getElementById('create-res-status');
+        const timeEl = document.getElementById('create-res-time');
+        const jsonEl = document.getElementById('create-res-json');
+
+        updateStatusBadge(statusBadge, res.status);
+        timeEl.textContent = `${duration}ms`;
+        jsonEl.textContent = JSON.stringify(data, null, 2);
+        view.classList.add('visible');
+
+        if (res.ok && data.data && data.data.id) {
+          saveRecentMock(data.data.id, data.data.label, statusCode);
+          showToast(`Mock created! ID: ${data.data.id.substring(0, 8)}...`);
+        }
+      } catch (err) {
+        const view = document.getElementById('create-response-view');
+        updateStatusBadge(document.getElementById('create-res-status'), 500);
+        document.getElementById('create-res-time').textContent = 'Error';
+        document.getElementById('create-res-json').textContent = JSON.stringify({ error: err.message }, null, 2);
+        view.classList.add('visible');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg> Execute POST /api/mocks`;
+      }
+    }
+
+    // 2. Submit GET /api/mocks/:id
+    async function handleGetMock(e) {
+      e.preventDefault();
+      const id = document.getElementById('get-mock-id').value.trim();
+      if (!id) return;
+
+      const btn = document.getElementById('btn-get-submit');
+      btn.disabled = true;
+      btn.textContent = 'Fetching...';
+      const startTime = performance.now();
+
+      try {
+        const res = await fetch(`/api/mocks/${encodeURIComponent(id)}`);
+        const duration = Math.round(performance.now() - startTime);
+        const data = await res.json();
+
+        const view = document.getElementById('get-response-view');
+        updateStatusBadge(document.getElementById('get-res-status'), res.status);
+        document.getElementById('get-res-time').textContent = `${duration}ms`;
+        document.getElementById('get-res-json').textContent = JSON.stringify(data, null, 2);
+        view.classList.add('visible');
+      } catch (err) {
+        const view = document.getElementById('get-response-view');
+        updateStatusBadge(document.getElementById('get-res-status'), 500);
+        document.getElementById('get-res-time').textContent = 'Error';
+        document.getElementById('get-res-json').textContent = JSON.stringify({ error: err.message }, null, 2);
+        view.classList.add('visible');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg> Execute GET /api/mocks/:id`;
+      }
+    }
+
+    // 3. Submit PATCH /api/mocks/:id
+    async function handlePatchMock(e) {
+      e.preventDefault();
+      const id = document.getElementById('patch-mock-id').value.trim();
+      if (!id) return;
+
+      const statusCodeVal = document.getElementById('patch-status-code').value;
+      const labelVal = document.getElementById('patch-label').value.trim();
+      const responseVal = document.getElementById('patch-response-body').value.trim();
+
+      const payload = {};
+      if (statusCodeVal) payload.status_code = parseInt(statusCodeVal, 10);
+      if (labelVal) payload.label = labelVal;
+      if (responseVal) {
+        try {
+          payload.response = JSON.parse(responseVal);
+        } catch (err) {
+          alert('Invalid JSON in Response Body. Please check format.');
+          return;
+        }
+      }
+
+      if (Object.keys(payload).length === 0) {
+        alert('Please specify at least one field to update.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-patch-submit');
+      btn.disabled = true;
+      btn.textContent = 'Updating...';
+      const startTime = performance.now();
+
+      try {
+        const res = await fetch(`/api/mocks/${encodeURIComponent(id)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const duration = Math.round(performance.now() - startTime);
+        const data = await res.json();
+
+        const view = document.getElementById('patch-response-view');
+        updateStatusBadge(document.getElementById('patch-res-status'), res.status);
+        document.getElementById('patch-res-time').textContent = `${duration}ms`;
+        document.getElementById('patch-res-json').textContent = JSON.stringify(data, null, 2);
+        view.classList.add('visible');
+
+        if (res.ok) {
+          showToast('API Mock successfully updated');
+        }
+      } catch (err) {
+        const view = document.getElementById('patch-response-view');
+        updateStatusBadge(document.getElementById('patch-res-status'), 500);
+        document.getElementById('patch-res-time').textContent = 'Error';
+        document.getElementById('patch-res-json').textContent = JSON.stringify({ error: err.message }, null, 2);
+        view.classList.add('visible');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Execute PATCH /api/mocks/:id`;
+      }
+    }
+
+    // 4. Submit Dynamic Simulator
+    async function handleExecuteDynamic(e) {
+      e.preventDefault();
+      const id = document.getElementById('dyn-mock-id').value.trim();
+      if (!id) return;
+
+      const method = document.getElementById('dyn-method').value;
+      let subpath = document.getElementById('dyn-subpath').value.trim();
+      if (subpath && !subpath.startsWith('/')) subpath = '/' + subpath;
+
+      const url = `/api/dynamic/${encodeURIComponent(id)}${subpath}`;
+      const btn = document.getElementById('btn-dynamic-submit');
+      btn.disabled = true;
+      btn.textContent = 'Invoking...';
+      const startTime = performance.now();
+
+      const options = { method, headers: {} };
+      if (['POST', 'PUT', 'PATCH'].includes(method)) {
+        const bodyContent = document.getElementById('dyn-req-body').value.trim();
+        if (bodyContent) {
+          options.headers['Content-Type'] = 'application/json';
+          options.body = bodyContent;
+        }
+      }
+
+      try {
+        const res = await fetch(url, options);
+        const duration = Math.round(performance.now() - startTime);
+
+        let data;
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+          data = JSON.stringify(data, null, 2);
+        } else {
+          data = await res.text();
+        }
+
+        const view = document.getElementById('dynamic-response-view');
+        updateStatusBadge(document.getElementById('dynamic-res-status'), res.status);
+        document.getElementById('dynamic-res-time').textContent = `${duration}ms`;
+        document.getElementById('dynamic-res-json').textContent = data || '(Empty Response Body)';
+        view.classList.add('visible');
+
+        showToast(`Dynamic mock returned HTTP ${res.status}`);
+      } catch (err) {
+        const view = document.getElementById('dynamic-response-view');
+        updateStatusBadge(document.getElementById('dynamic-res-status'), 500);
+        document.getElementById('dynamic-res-time').textContent = 'Error';
+        document.getElementById('dynamic-res-json').textContent = JSON.stringify({ error: err.message }, null, 2);
+        view.classList.add('visible');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg> Send Request to Mock Gateway`;
+      }
+    }
+
+    // Code Snippet Tabs Management
+    const snippets = {
+      'create-curl': `curl -X POST "{ORIGIN}/api/mocks" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "status_code": 200,
+    "label": "User Profile Success",
+    "response": {
+      "id": 101,
+      "name": "Jane Doe",
+      "status": "active"
+    }
+  }'`,
+      'create-js': `const res = await fetch('{ORIGIN}/api/mocks', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    status_code: 200,
+    label: 'User Profile Success',
+    response: { id: 101, name: 'Jane Doe', status: 'active' }
+  })
+});
+const data = await res.json();
+console.log('Mock created with ID:', data.data.id);`,
+      'create-py': `import requests
+
+url = "{ORIGIN}/api/mocks"
+payload = {
+    "status_code": 200,
+    "label": "User Profile Success",
+    "response": { "id": 101, "name": "Jane Doe", "status": "active" }
+}
+response = requests.post(url, json=payload)
+print(response.json())`,
+
+      'get-curl': `curl -X GET "{ORIGIN}/api/mocks/<MOCK_ID>"`,
+      'get-js': `const res = await fetch('{ORIGIN}/api/mocks/' + mockId);
+const data = await res.json();
+console.log('Mock config:', data.data);`,
+      'get-py': `import requests
+
+url = f"{ORIGIN}/api/mocks/{mock_id}"
+response = requests.get(url)
+print(response.json())`,
+
+      'patch-curl': `curl -X PATCH "{ORIGIN}/api/mocks/<MOCK_ID>" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "status_code": 500,
+    "response": { "error": "Simulated database outage" }
+  }'`,
+      'patch-js': `const res = await fetch('{ORIGIN}/api/mocks/' + mockId, {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    status_code: 500,
+    response: { error: 'Simulated database outage' }
+  })
+});
+const data = await res.json();
+console.log(data);`,
+      'patch-py': `import requests
+
+url = f"{ORIGIN}/api/mocks/{mock_id}"
+payload = {
+    "status_code": 500,
+    "response": { "error": "Simulated database outage" }
+}
+response = requests.patch(url, json=payload)
+print(response.json())`,
+
+      'dynamic-curl': `curl -X GET "{ORIGIN}/api/dynamic/<MOCK_ID>/v1/users/profile"`,
+      'dynamic-js': `// Call using any HTTP method (GET, POST, PUT, DELETE, etc.)
+const res = await fetch('{ORIGIN}/api/dynamic/' + mockId + '/v1/users/profile', {
+  method: 'GET'
+});
+const data = await res.json();
+console.log('Status:', res.status);
+console.log('Response:', data);`,
+      'dynamic-py': `import requests
+
+# Trigger via any method and subpath
+url = f"{ORIGIN}/api/dynamic/{mock_id}/v1/users/profile"
+response = requests.get(url)
+print("Status:", response.status_code)
+print("Response:", response.json())`
+    };
+
+    function updateCodeSnippets() {
+      for (const key in snippets) {
+        snippets[key] = snippets[key].replaceAll('{ORIGIN}', ORIGIN);
+      }
+      document.getElementById('create-code').textContent = snippets['create-curl'];
+      document.getElementById('get-code').textContent = snippets['get-curl'];
+      document.getElementById('patch-code').textContent = snippets['patch-curl'];
+      document.getElementById('dynamic-code').textContent = snippets['dynamic-curl'];
+    }
+
+    function switchTab(btn, snippetKey) {
+      const container = btn.closest('.code-tabs-wrapper');
+      container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const codeBlock = container.querySelector('.code-block');
+      if (snippets[snippetKey]) {
+        codeBlock.textContent = snippets[snippetKey];
+      }
+    }
+
+    // Nav item scroll spy
+    function highlightActiveNavOnScroll() {
+      const sections = document.querySelectorAll('section[id]');
+      const navLinks = document.querySelectorAll('.sidebar .nav-link');
+
+      window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+          const sectionTop = section.offsetTop - 120;
+          if (window.pageYOffset >= sectionTop) {
+            current = section.getAttribute('id');
+          }
+        });
+
+        navLinks.forEach(link => {
+          link.classList.remove('active');
+          if (link.getAttribute('href') === `#${current}`) {
+            link.classList.add('active');
+          }
+        });
+      }, { passive: true });
+    }
+  </script>
+</body>
+</html>
