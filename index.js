@@ -434,7 +434,49 @@ app.get('/api/webhooks', async (req, res) => {
   }
 });
 
-// 3. Get specific Webhook details
+// 3. Server-Sent Events (SSE) Stream to push real-time received webhooks
+// (MUST be defined before /api/webhooks/:id so /api/webhooks/stream is not intercepted as an ID)
+app.get(['/api/webhooks/stream', '/api/webhooks/:id/stream'], (req, res) => {
+  const targetWebhookId = req.params.id ? req.params.id.trim() : null;
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+    'Access-Control-Allow-Origin': '*'
+  });
+  if (typeof res.flushHeaders === 'function') res.flushHeaders();
+
+  // Initial connection handshake
+  res.write(`event: connected\ndata: ${JSON.stringify({
+    status: 'connected',
+    target: targetWebhookId || 'all',
+    timestamp: new Date().toISOString()
+  })}\n\n`);
+
+  const onDelivery = (payload) => {
+    if (!targetWebhookId || String(targetWebhookId).toLowerCase() === String(payload.webhook_id).toLowerCase()) {
+      res.write(`event: webhook_received\ndata: ${JSON.stringify(payload)}\n\n`);
+      if (typeof res.flush === 'function') res.flush();
+    }
+  };
+
+  webhookService.webhookEmitter.on('delivery', onDelivery);
+
+  // Keep-alive heartbeat every 15 seconds
+  const heartbeat = setInterval(() => {
+    res.write(': ping\n\n');
+  }, 15000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    webhookService.webhookEmitter.removeListener('delivery', onDelivery);
+    res.end();
+  });
+});
+
+// 4. Get specific Webhook details
 app.get('/api/webhooks/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -665,44 +707,6 @@ app.get('/api/webhooks-logs', async (req, res) => {
       message: 'Failed to fetch webhook logs.'
     });
   }
-});
-
-// 8. Server-Sent Events (SSE) Stream to push real-time received webhooks
-app.get(['/api/webhooks/stream', '/api/webhooks/:id/stream'], (req, res) => {
-  const targetWebhookId = req.params.id || null;
-
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache, no-transform',
-    'Connection': 'keep-alive',
-    'Access-Control-Allow-Origin': '*'
-  });
-
-  // Initial connection handshake
-  res.write(`event: connected\ndata: ${JSON.stringify({
-    status: 'connected',
-    target: targetWebhookId || 'all',
-    timestamp: new Date().toISOString()
-  })}\n\n`);
-
-  const onDelivery = (payload) => {
-    if (!targetWebhookId || targetWebhookId === payload.webhook_id) {
-      res.write(`event: webhook_received\ndata: ${JSON.stringify(payload)}\n\n`);
-    }
-  };
-
-  webhookService.webhookEmitter.on('delivery', onDelivery);
-
-  // Keep-alive heartbeat every 20 seconds
-  const heartbeat = setInterval(() => {
-    res.write(': ping\n\n');
-  }, 20000);
-
-  req.on('close', () => {
-    clearInterval(heartbeat);
-    webhookService.webhookEmitter.removeListener('delivery', onDelivery);
-    res.end();
-  });
 });
 
 // Fallback for any other route

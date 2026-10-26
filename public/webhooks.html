@@ -1117,26 +1117,28 @@
     // Connect SSE
     function connectSSE() {
       if (eventSource) {
-        eventSource.close();
+        try { eventSource.close(); } catch {}
       }
 
-      const streamUrl = selectedWebhookId === 'all'
-        ? '/api/webhooks/stream'
-        : `/api/webhooks/${selectedWebhookId}/stream`;
+      const streamUrl = (selectedWebhookId && selectedWebhookId !== 'all')
+        ? `/api/webhooks/${selectedWebhookId}/stream`
+        : `/api/webhooks/stream`;
 
+      console.log('[SSE] Connecting to', streamUrl);
       sseBadge.className = 'sse-badge connecting';
       sseText.textContent = 'Connecting SSE...';
 
       eventSource = new EventSource(streamUrl);
 
       eventSource.onopen = () => {
+        console.log('[SSE] Connection opened on', streamUrl);
         sseBadge.className = 'sse-badge connected';
-        sseText.textContent = 'SSE Live Connected';
+        sseText.textContent = selectedWebhookId === 'all' ? 'SSE Live (Global)' : 'SSE Live (Channel)';
       };
 
       eventSource.addEventListener('connected', () => {
         sseBadge.className = 'sse-badge connected';
-        sseText.textContent = 'SSE Live Connected';
+        sseText.textContent = selectedWebhookId === 'all' ? 'SSE Live (Global)' : 'SSE Live (Channel)';
       });
 
       eventSource.addEventListener('webhook_received', (e) => {
@@ -1144,11 +1146,21 @@
           const newDelivery = JSON.parse(e.data);
           handleIncomingDelivery(newDelivery);
         } catch (err) {
-          console.error('Error parsing SSE event:', err);
+          console.error('[SSE] Error parsing event:', err);
         }
       });
 
-      eventSource.onerror = () => {
+      eventSource.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data && data.webhook_id) {
+            handleIncomingDelivery(data);
+          }
+        } catch {}
+      };
+
+      eventSource.onerror = (err) => {
+        console.warn('[SSE] EventSource reconnecting or error:', err);
         sseBadge.className = 'sse-badge connecting';
         sseText.textContent = 'Reconnecting...';
       };
@@ -1156,28 +1168,42 @@
 
     // Handle incoming SSE delivery
     function handleIncomingDelivery(delivery) {
-      if (selectedWebhookId !== 'all' && delivery.webhook_id !== selectedWebhookId) {
-        return;
+      if (!delivery || !delivery.id) return;
+      console.log('[SSE] Incoming delivery received:', delivery.id, 'target:', delivery.webhook_id);
+
+      // Check if matches active channel filter
+      if (selectedWebhookId && selectedWebhookId !== 'all') {
+        if (String(delivery.webhook_id).toLowerCase() !== String(selectedWebhookId).toLowerCase()) {
+          console.log('[SSE] Delivery belongs to another channel, skipping UI prepend');
+          return;
+        }
       }
 
-      if (deliveries.some(d => d.id === delivery.id)) return;
+      // Check if already in list
+      const existingIdx = deliveries.findIndex(d => d.id === delivery.id);
+      if (existingIdx !== -1) {
+        deliveries[existingIdx] = delivery;
+      } else {
+        deliveries.unshift(delivery);
+      }
 
-      deliveries.unshift(delivery);
       updateMetrics();
 
       if (emptyListState) emptyListState.style.display = 'none';
 
-      // Insert at top of list
-      const card = createItemElement(delivery);
-      card.classList.add('row-incoming');
-      deliveriesListEl.insertBefore(card, deliveriesListEl.firstChild);
+      // Re-render list to ensure consistent ordering and search filter
+      renderList();
 
-      // If no delivery selected currently, select the incoming one
-      if (!activeDelivery) {
-        selectDelivery(delivery);
+      // Highlight new item at the top
+      const newCard = document.getElementById(`item-${delivery.id}`);
+      if (newCard) {
+        newCard.classList.add('row-incoming');
       }
 
-      showToast(`⚡ New Webhook: ${delivery.method} (${delivery.webhook_id.slice(0, 8)}...)`);
+      // Automatically select the newly arrived webhook so the right-side detail pane updates immediately!
+      selectDelivery(delivery);
+
+      showToast(`⚡ New Webhook received: ${delivery.method || 'POST'} (${(delivery.webhook_id || '').slice(0, 8)}...)`);
     }
 
     // Filter & Render Deliveries List
