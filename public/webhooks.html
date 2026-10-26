@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Webhook Receiver & Live Stream Inspector | Mock Server</title>
-  <meta name="description" content="Live Server-Sent Events (SSE) webhook receiver, real-time delivery inspector, and rate-limited endpoint manager.">
+  <title>Live Webhook Stream & Inspector | Mock Server</title>
+  <meta name="description" content="Full-screen split-view real-time webhook receiver and inspector with Server-Sent Events (SSE).">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -44,6 +44,10 @@
       --color-delete-bg: rgba(239, 68, 68, 0.12);
       --color-delete-border: rgba(239, 68, 68, 0.28);
 
+      --color-patch: #a855f7;
+      --color-patch-bg: rgba(168, 85, 247, 0.12);
+      --color-patch-border: rgba(168, 85, 247, 0.28);
+
       --radius-sm: 6px;
       --radius-md: 10px;
       --radius-lg: 14px;
@@ -51,7 +55,6 @@
 
       --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
       --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
-      --shadow-glow: 0 0 35px rgba(99, 102, 241, 0.15);
     }
 
     * {
@@ -60,108 +63,114 @@
       padding: 0;
     }
 
-    body {
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
       background-color: var(--bg-base);
       color: var(--text-main);
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      line-height: 1.6;
-      min-height: 100vh;
-      overflow-x: hidden;
+      line-height: 1.5;
+    }
+
+    body {
       display: flex;
       flex-direction: column;
     }
 
     /* Top Navigation */
     header {
-      background: rgba(14, 19, 31, 0.85);
+      height: 56px;
+      background: rgba(14, 19, 31, 0.95);
       backdrop-filter: blur(14px);
       border-bottom: 1px solid var(--border-subtle);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      padding: 0.85rem 2rem;
+      padding: 0 1.5rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      flex-shrink: 0;
+      z-index: 50;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.65rem;
       text-decoration: none;
       color: var(--text-main);
     }
 
     .brand-icon {
-      width: 34px;
-      height: 34px;
+      width: 30px;
+      height: 30px;
       background: linear-gradient(135deg, var(--primary), #a855f7);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 800;
-      font-size: 1.1rem;
+      font-size: 0.95rem;
       color: #fff;
-      box-shadow: 0 0 15px var(--primary-glow);
+      box-shadow: 0 0 12px var(--primary-glow);
     }
 
     .brand-title {
       font-weight: 700;
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       letter-spacing: -0.02em;
     }
 
     .brand-title span {
       color: var(--text-muted);
       font-weight: 400;
-      font-size: 0.95rem;
+      font-size: 0.88rem;
     }
 
-    .nav-links {
+    .rate-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
+      background: rgba(99, 102, 241, 0.12);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      color: #a5b4fc;
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .nav-actions {
       display: flex;
       align-items: center;
-      gap: 1.25rem;
+      gap: 0.85rem;
     }
 
-    .nav-link {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-
-    .nav-link:hover, .nav-link.active {
-      color: var(--text-main);
-    }
-
-    /* SSE Status Badge */
     .sse-badge {
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
       background: var(--bg-elevated);
       border: 1px solid var(--border-subtle);
-      padding: 0.35rem 0.85rem;
+      padding: 0.3rem 0.75rem;
       border-radius: 9999px;
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 500;
       color: var(--text-muted);
     }
 
     .pulse-dot {
-      width: 8px;
-      height: 8px;
+      width: 7px;
+      height: 7px;
       border-radius: 50%;
       background-color: #64748b;
-      position: relative;
     }
 
     .sse-badge.connected .pulse-dot {
       background-color: #10b981;
-      box-shadow: 0 0 10px #10b981;
+      box-shadow: 0 0 8px #10b981;
       animation: pulseGreen 2s infinite;
     }
 
@@ -178,95 +187,39 @@
 
     @keyframes pulseGreen {
       0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
-      70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
       100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
 
     @keyframes pulseAmber {
       0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-      70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+      70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }
       100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-    }
-
-    /* Main Container */
-    main {
-      flex: 1;
-      max-width: 1400px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 2rem;
-    }
-
-    /* Hero / Action Toolbar */
-    .hero-banner {
-      background: linear-gradient(135deg, rgba(21, 28, 46, 0.8), rgba(14, 19, 31, 0.95));
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-xl);
-      padding: 1.75rem 2rem;
-      margin-bottom: 2rem;
-      box-shadow: var(--shadow-sm);
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 1.5rem;
-    }
-
-    .hero-text h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-      margin-bottom: 0.35rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .hero-text p {
-      color: var(--text-muted);
-      font-size: 0.92rem;
-      max-width: 680px;
-    }
-
-    .rate-pill {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.75rem;
-      background: rgba(99, 102, 241, 0.15);
-      border: 1px solid rgba(99, 102, 241, 0.3);
-      color: #a5b4fc;
-      padding: 0.2rem 0.6rem;
-      border-radius: var(--radius-sm);
-    }
-
-    .hero-actions {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
     }
 
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 0.5rem;
-      padding: 0.65rem 1.25rem;
-      border-radius: var(--radius-md);
-      font-size: 0.88rem;
+      gap: 0.45rem;
+      padding: 0.45rem 0.9rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
       font-weight: 600;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all 0.15s ease;
       border: none;
       outline: none;
+      text-decoration: none;
     }
 
     .btn-primary {
       background: var(--primary);
       color: #fff;
-      box-shadow: 0 4px 14px var(--primary-glow);
+      box-shadow: 0 2px 10px var(--primary-glow);
     }
 
     .btn-primary:hover {
       background: var(--primary-hover);
-      transform: translateY(-1px);
     }
 
     .btn-secondary {
@@ -280,70 +233,51 @@
       border-color: rgba(255, 255, 255, 0.15);
     }
 
-    /* Metric Cards */
-    .metrics-grid {
+    /* Full-Screen Split Layout: 1 : 2 Ratio */
+    .split-layout {
+      flex: 1;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1.5rem;
+      grid-template-columns: 1fr 2fr;
+      width: 100vw;
+      height: calc(100vh - 56px);
+      overflow: hidden;
     }
 
-    .metric-card {
+    /* ------------------------------------------- */
+    /* LEFT PANE: Webhook List (1 part)           */
+    /* ------------------------------------------- */
+    .left-pane {
       background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 1.25rem 1.5rem;
-    }
-
-    .metric-title {
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.4rem;
-    }
-
-    .metric-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--text-main);
-    }
-
-    .metric-sub {
-      font-size: 0.78rem;
-      color: var(--text-dim);
-      margin-top: 0.2rem;
-    }
-
-    /* Controls Bar */
-    .controls-bar {
+      border-right: 1px solid var(--border-subtle);
       display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 1rem;
-      margin-bottom: 1rem;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-lg);
-      padding: 0.85rem 1.25rem;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
     }
 
-    .filter-group {
+    .left-toolbar {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      display: flex;
+      flex-direction: column;
+      gap: 0.65rem;
+      flex-shrink: 0;
+    }
+
+    .toolbar-row {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.5rem;
     }
 
     .select-input, .text-input {
       background: var(--bg-input);
       color: var(--text-main);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 0.55rem 0.85rem;
-      font-size: 0.85rem;
+      border-radius: var(--radius-sm);
+      padding: 0.45rem 0.75rem;
+      font-size: 0.82rem;
       font-family: inherit;
       outline: none;
       transition: border-color 0.2s;
@@ -353,146 +287,346 @@
       border-color: var(--primary);
     }
 
-    /* Table Container */
-    .table-container {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-xl);
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
+    .list-stats-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      padding: 0.4rem 1rem;
+      background: rgba(0, 0, 0, 0.15);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-      font-size: 0.88rem;
+    .deliveries-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
     }
 
-    thead {
+    /* Webhook List Item Card */
+    .delivery-item {
       background: var(--bg-elevated);
-      border-bottom: 1px solid var(--border-subtle);
+      border: 1px solid var(--border-subtle);
+      border-left: 3px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 0.75rem 0.85rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      user-select: none;
     }
 
-    th {
-      padding: 0.95rem 1.25rem;
-      font-weight: 600;
+    .delivery-item:hover {
+      background: var(--bg-overlay);
+      border-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .delivery-item.active {
+      background: rgba(99, 102, 241, 0.12);
+      border-color: rgba(99, 102, 241, 0.4);
+      border-left: 3px solid var(--primary);
+      box-shadow: 0 0 16px rgba(99, 102, 241, 0.12);
+    }
+
+    .delivery-item-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .item-time {
+      font-size: 0.75rem;
       color: var(--text-muted);
-      font-size: 0.8rem;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      font-family: 'JetBrains Mono', monospace;
     }
 
-    td {
-      padding: 1rem 1.25rem;
-      border-bottom: 1px solid var(--border-subtle);
-      vertical-align: middle;
+    .item-meta-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      font-size: 0.78rem;
     }
 
-    tbody tr {
-      transition: background-color 0.15s;
+    .item-target {
+      color: var(--text-main);
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 170px;
     }
 
-    tbody tr:hover {
-      background: rgba(255, 255, 255, 0.02);
+    .item-ip {
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72rem;
     }
 
-    /* Animated Highlight for New SSE Rows */
-    @keyframes highlightRow {
-      0% { background-color: rgba(99, 102, 241, 0.35); }
-      100% { background-color: transparent; }
+    .item-preview {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      background: var(--bg-input);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Animation on SSE Arrival */
+    @keyframes itemIncoming {
+      0% {
+        transform: translateY(-8px);
+        background-color: rgba(99, 102, 241, 0.35);
+        border-color: var(--primary);
+      }
+      100% {
+        transform: translateY(0);
+      }
     }
 
     .row-incoming {
-      animation: highlightRow 2.5s ease-out;
+      animation: itemIncoming 2s ease-out;
     }
 
-    /* HTTP Method Badges */
+    /* Badges */
     .badge-method {
       display: inline-block;
-      padding: 0.25rem 0.6rem;
-      border-radius: var(--radius-sm);
-      font-size: 0.75rem;
+      padding: 0.18rem 0.48rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
       font-weight: 700;
       font-family: 'JetBrains Mono', monospace;
       text-align: center;
-      min-width: 58px;
+      line-height: 1;
     }
 
     .badge-post { background: var(--color-post-bg); color: var(--color-post); border: 1px solid var(--color-post-border); }
     .badge-get { background: var(--color-get-bg); color: var(--color-get); border: 1px solid var(--color-get-border); }
     .badge-put { background: var(--color-put-bg); color: var(--color-put); border: 1px solid var(--color-put-border); }
     .badge-delete { background: var(--color-delete-bg); color: var(--color-delete); border: 1px solid var(--color-delete-border); }
-    .badge-patch { background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+    .badge-patch { background: var(--color-patch-bg); color: #c084fc; border: 1px solid var(--color-patch-border); }
 
-    .mono-cell {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.82rem;
-      color: #cbd5e1;
+    /* ------------------------------------------- */
+    /* RIGHT PANE: Detail Data (2 parts)          */
+    /* ------------------------------------------- */
+    .right-pane {
+      background: var(--bg-base);
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
     }
 
-    .preview-pill {
+    .detail-header {
+      padding: 0.85rem 1.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-surface);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-shrink: 0;
+    }
+
+    .detail-title-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      min-width: 0;
+    }
+
+    .detail-id {
+      font-size: 0.95rem;
+      font-weight: 700;
       font-family: 'JetBrains Mono', monospace;
-      font-size: 0.78rem;
-      background: var(--bg-input);
-      border: 1px solid var(--border-subtle);
-      padding: 0.25rem 0.55rem;
-      border-radius: var(--radius-sm);
-      color: var(--text-muted);
-      max-width: 320px;
+      color: var(--text-main);
+      white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      white-space: nowrap;
-      display: inline-block;
     }
 
-    .time-cell {
+    .detail-meta-pill {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      padding: 0.2rem 0.55rem;
+      border-radius: var(--radius-sm);
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+    }
+
+    .detail-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* Tabs Bar */
+    .tabs-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+      padding: 0 1.5rem;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      font-weight: 600;
+      padding: 0.65rem 1rem;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      color: var(--primary);
+    }
+
+    .tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary);
+      box-shadow: 0 0 8px var(--primary);
+    }
+
+    .tab-badge {
+      font-size: 0.7rem;
+      background: var(--bg-elevated);
+      color: var(--text-dim);
+      padding: 0.1rem 0.45rem;
+      border-radius: 9999px;
+      font-weight: 500;
+    }
+
+    /* Detail Content Area */
+    .detail-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .code-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      overflow: hidden;
       display: flex;
       flex-direction: column;
     }
 
-    .time-relative {
-      font-weight: 600;
-      color: var(--text-main);
-      font-size: 0.85rem;
+    .code-header {
+      padding: 0.6rem 1rem;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 500;
     }
 
-    .time-exact {
-      font-size: 0.75rem;
-      color: var(--text-dim);
+    .code-view {
+      padding: 1rem 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.84rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+      background: var(--bg-input);
+      white-space: pre-wrap;
+      word-break: break-all;
+      overflow-x: auto;
+      max-height: calc(100vh - 280px);
+    }
+
+    /* Key Value Grid for Headers & Metadata */
+    .kv-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .kv-table th {
+      text-align: left;
+      padding: 0.6rem 1rem;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .kv-table td {
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: top;
       font-family: 'JetBrains Mono', monospace;
     }
 
-    .btn-inspect {
-      background: var(--bg-elevated);
-      color: var(--text-main);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
-      padding: 0.35rem 0.75rem;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.2s;
+    .kv-key {
+      color: #93c5fd;
+      font-weight: 600;
+      width: 240px;
     }
 
-    .btn-inspect:hover {
-      background: var(--primary);
-      border-color: var(--primary);
+    .kv-value {
+      color: #e2e8f0;
+      word-break: break-all;
     }
 
-    /* Empty state */
-    .empty-state {
+    /* Empty States */
+    .empty-pane {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 3rem;
       text-align: center;
-      padding: 4rem 2rem;
       color: var(--text-muted);
     }
 
-    .empty-state-icon {
-      font-size: 3rem;
-      margin-bottom: 1rem;
-      opacity: 0.6;
+    .empty-pane-icon {
+      font-size: 2.75rem;
+      margin-bottom: 0.75rem;
+      opacity: 0.5;
     }
 
-    /* Modal Backdrop & Dialog */
+    /* Modals for Create Webhook & cURL */
     .modal-backdrop {
       position: fixed;
       inset: 0;
@@ -514,7 +648,7 @@
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-xl);
       width: 100%;
-      max-width: 820px;
+      max-width: 680px;
       max-height: 90vh;
       display: flex;
       flex-direction: column;
@@ -523,7 +657,7 @@
     }
 
     .modal-header {
-      padding: 1.25rem 1.75rem;
+      padding: 1.1rem 1.5rem;
       border-bottom: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
@@ -532,22 +666,20 @@
     }
 
     .modal-title {
-      font-size: 1.15rem;
+      font-size: 1.05rem;
       font-weight: 700;
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 0.65rem;
     }
 
     .modal-close {
       background: transparent;
       border: none;
       color: var(--text-muted);
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       cursor: pointer;
       line-height: 1;
-      padding: 0.25rem;
-      border-radius: var(--radius-sm);
     }
 
     .modal-close:hover {
@@ -555,60 +687,13 @@
     }
 
     .modal-body {
-      padding: 1.5rem 1.75rem;
+      padding: 1.5rem;
       overflow-y: auto;
       flex: 1;
     }
 
-    .modal-tabs {
-      display: flex;
-      gap: 0.5rem;
-      border-bottom: 1px solid var(--border-subtle);
-      margin-bottom: 1.25rem;
-    }
-
-    .modal-tab {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 0.88rem;
-      font-weight: 600;
-      padding: 0.65rem 1.1rem;
-      cursor: pointer;
-      position: relative;
-      transition: color 0.2s;
-    }
-
-    .modal-tab.active {
-      color: var(--primary);
-    }
-
-    .modal-tab.active::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: var(--primary);
-    }
-
-    .code-box {
-      background: var(--bg-input);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 1.25rem;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem;
-      color: #f1f5f9;
-      max-height: 380px;
-      overflow: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-
     .modal-footer {
-      padding: 1rem 1.75rem;
+      padding: 0.85rem 1.5rem;
       border-top: 1px solid var(--border-subtle);
       background: var(--bg-elevated);
       display: flex;
@@ -616,160 +701,257 @@
       gap: 0.75rem;
     }
 
-    .copy-success {
-      color: #34d399;
-      font-size: 0.8rem;
-      margin-right: auto;
-      align-self: center;
-      display: none;
-    }
-
-    /* Toast Notification */
     .toast-container {
       position: fixed;
-      bottom: 2rem;
-      right: 2rem;
+      bottom: 1.5rem;
+      right: 1.5rem;
       z-index: 2000;
       display: flex;
       flex-direction: column;
-      gap: 0.75rem;
+      gap: 0.5rem;
     }
 
     .toast {
       background: var(--bg-overlay);
       border: 1px solid var(--border-focus);
       box-shadow: var(--shadow-md);
-      border-radius: var(--radius-md);
-      padding: 0.85rem 1.25rem;
-      font-size: 0.88rem;
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
+      border-radius: var(--radius-sm);
+      padding: 0.65rem 1rem;
+      font-size: 0.82rem;
       color: var(--text-main);
-      animation: slideInToast 0.3s ease-out;
+      animation: slideInToast 0.25s ease-out;
     }
 
     @keyframes slideInToast {
       from { transform: translateX(100%); opacity: 0; }
       to { transform: translateX(0); opacity: 1; }
     }
+
+    /* Responsive adjustments */
+    @media (max-width: 900px) {
+      .split-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        overflow-y: auto;
+      }
+      .left-pane {
+        max-height: 45vh;
+      }
+      .right-pane {
+        min-height: 55vh;
+      }
+    }
   </style>
 </head>
 <body>
 
-  <!-- Navigation -->
+  <!-- Top Header Navigation -->
   <header>
-    <a href="/docs" class="brand">
-      <div class="brand-icon">⚡</div>
-      <div class="brand-title">MockServer <span>// Webhook Engine</span></div>
-    </a>
+    <div class="brand-section">
+      <a href="/docs" class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-title">MockServer <span>// Webhooks</span></div>
+      </a>
+      <span class="rate-pill">Rate Limit: 10 req / min</span>
+    </div>
 
-    <div class="nav-links">
+    <div class="nav-actions">
       <div id="sseStatusBadge" class="sse-badge connecting">
         <div class="pulse-dot"></div>
         <span id="sseStatusText">Connecting SSE...</span>
       </div>
-      <a href="/docs" class="nav-link">API Docs</a>
-      <a href="/webhooks" class="nav-link active">Live Webhooks</a>
+
+      <button id="btnCreateWebhook" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Webhook ID
+      </button>
+
+      <button id="btnQuickCurl" class="btn btn-secondary" title="View test cURL commands">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+        cURL Tester
+      </button>
+
+      <a href="/docs" class="btn btn-secondary">API Docs</a>
     </div>
   </header>
 
-  <!-- Main Content -->
-  <main>
-    <!-- Hero / Creation Bar -->
-    <section class="hero-banner">
-      <div class="hero-text">
-        <h1>
-          Live Webhook Receiver
-          <span class="rate-pill">Rate Limit: 10 req / min</span>
-        </h1>
-        <p>
-          Send HTTP requests from external providers to your generated webhook ID.
-          Records are verified, persisted to PostgreSQL, and pushed live via Server-Sent Events (SSE).
-        </p>
+  <!-- Split Screen 1 : 2 Layout -->
+  <main class="split-layout">
+
+    <!-- LEFT SIDEBAR: Webhook Deliveries List (1 part) -->
+    <section class="left-pane">
+      <div class="left-toolbar">
+        <div class="toolbar-row">
+          <select id="webhookFilter" class="select-input" style="flex: 1;">
+            <option value="all">🌐 All Webhook Channels (Global Feed)</option>
+          </select>
+          <button id="btnRefresh" class="btn btn-secondary" title="Refresh list" style="padding: 0.45rem 0.6rem;">
+            ↻
+          </button>
+          <button id="btnClearTable" class="btn btn-secondary" title="Clear view" style="padding: 0.45rem 0.6rem;">
+            ✕
+          </button>
+        </div>
+
+        <div class="toolbar-row">
+          <input type="text" id="searchInput" class="text-input" placeholder="Filter by ID, IP, or payload..." style="width: 100%;">
+        </div>
       </div>
 
-      <div class="hero-actions">
-        <button id="btnCreateWebhook" class="btn btn-primary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-          Create Webhook ID
-        </button>
-        <button id="btnQuickCurl" class="btn btn-secondary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-          Test Delivery (cURL)
-        </button>
+      <div class="list-stats-bar">
+        <span>Deliveries: <strong id="metricTotalDeliveries" style="color: var(--text-main);">0</strong></span>
+        <span>Active Channels: <strong id="metricActiveWebhooks" style="color: var(--text-main);">0</strong></span>
+        <span id="metricLastDelivery">None</span>
+      </div>
+
+      <!-- Deliveries List -->
+      <div id="deliveriesList" class="deliveries-list">
+        <!-- Delivery items dynamically rendered here -->
+      </div>
+
+      <div id="emptyListState" class="empty-pane" style="display: none;">
+        <div class="empty-pane-icon">📡</div>
+        <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 0.35rem;">No Webhooks Received</div>
+        <p style="font-size: 0.78rem; max-width: 260px; line-height: 1.5;">
+          Dispatch external requests to <code style="color: #a5b4fc;">/api/webhooks/:id/incoming</code>.
+        </p>
       </div>
     </section>
 
-    <!-- Metrics Cards -->
-    <div class="metrics-grid">
-      <div class="metric-card">
-        <div class="metric-title">Total Deliveries</div>
-        <div id="metricTotalDeliveries" class="metric-value">0</div>
-        <div class="metric-sub">Processed in current session</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-title">Active Channels</div>
-        <div id="metricActiveWebhooks" class="metric-value">0</div>
-        <div class="metric-sub">Registered webhook targets</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-title">Rate Limiter Window</div>
-        <div class="metric-value" style="color: #a5b4fc;">10 / min</div>
-        <div class="metric-sub">Enforced per target ID</div>
-      </div>
-      <div class="metric-card">
-        <div class="metric-title">Last Delivery</div>
-        <div id="metricLastDelivery" class="metric-value" style="font-size: 1.15rem; padding-top: 0.4rem;">None</div>
-        <div class="metric-sub">Real-time SSE synced</div>
-      </div>
-    </div>
+    <!-- RIGHT MAIN: Detail Data Inspector (2 parts) -->
+    <section class="right-pane" id="rightPane">
+      
+      <!-- Populated when a delivery is active -->
+      <div id="detailView" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
+        
+        <!-- Detail Header -->
+        <div class="detail-header">
+          <div class="detail-title-group">
+            <span id="detailMethodBadge" class="badge-method badge-post">POST</span>
+            <span id="detailTitle" class="detail-id">Select a Delivery</span>
+            <span id="detailTimeRelative" class="detail-meta-pill">Just now</span>
+            <span id="detailIpPill" class="detail-meta-pill">127.0.0.1</span>
+          </div>
 
-    <!-- Controls / Filters -->
-    <div class="controls-bar">
-      <div class="filter-group">
-        <label for="webhookFilter" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Filter Target:</label>
-        <select id="webhookFilter" class="select-input" style="min-width: 260px;">
-          <option value="all">🌐 All Webhook Channels (Global Feed)</option>
-        </select>
-        <button id="btnRefresh" class="btn btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
-          ↻ Refresh
-        </button>
+          <div class="detail-actions">
+            <button class="btn btn-secondary" onclick="copyActivePayload()" title="Copy request body JSON">
+              Copy Body
+            </button>
+            <button class="btn btn-primary" onclick="copyFullDeliveryJson()" title="Copy complete delivery record">
+              Copy Full Record
+            </button>
+          </div>
+        </div>
+
+        <!-- Detail Navigation Tabs -->
+        <div class="tabs-bar">
+          <button class="tab-btn active" onclick="switchDetailTab('body')">
+            Payload Body <span id="badgeBodySize" class="tab-badge">JSON</span>
+          </button>
+          <button class="tab-btn" onclick="switchDetailTab('headers')">
+            Headers <span id="badgeHeadersCount" class="tab-badge">0</span>
+          </button>
+          <button class="tab-btn" onclick="switchDetailTab('query')">
+            Query Params <span id="badgeQueryCount" class="tab-badge">0</span>
+          </button>
+          <button class="tab-btn" onclick="switchDetailTab('metadata')">
+            Metadata & Network
+          </button>
+        </div>
+
+        <!-- Detail Content -->
+        <div class="detail-content">
+
+          <!-- TAB 1: Payload Body -->
+          <div id="tabContentBody" class="code-container">
+            <div class="code-header">
+              <span>Parsed Request Body</span>
+              <button class="btn btn-secondary" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;" onclick="copyBoxText('detailBodyCode')">
+                Copy
+              </button>
+            </div>
+            <pre class="code-view" id="detailBodyCode"></pre>
+          </div>
+
+          <!-- TAB 2: Headers -->
+          <div id="tabContentHeaders" class="code-container" style="display: none;">
+            <div class="code-header">
+              <span>HTTP Request Headers</span>
+              <button class="btn btn-secondary" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;" onclick="copyBoxText('detailHeadersCode')">
+                Copy
+              </button>
+            </div>
+            <div style="overflow-x: auto;">
+              <table class="kv-table">
+                <thead>
+                  <tr>
+                    <th>Header Key</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody id="headersTableBody">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+            <pre class="code-view" id="detailHeadersCode" style="display: none;"></pre>
+          </div>
+
+          <!-- TAB 3: Query Params -->
+          <div id="tabContentQuery" class="code-container" style="display: none;">
+            <div class="code-header">
+              <span>URL Query Parameters</span>
+              <button class="btn btn-secondary" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;" onclick="copyBoxText('detailQueryCode')">
+                Copy
+              </button>
+            </div>
+            <div style="overflow-x: auto;">
+              <table class="kv-table">
+                <thead>
+                  <tr>
+                    <th>Parameter Key</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody id="queryTableBody">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+            <pre class="code-view" id="detailQueryCode" style="display: none;"></pre>
+          </div>
+
+          <!-- TAB 4: Metadata & Network -->
+          <div id="tabContentMetadata" class="code-container" style="display: none;">
+            <div class="code-header">
+              <span>Network & Server Execution Metadata</span>
+            </div>
+            <table class="kv-table">
+              <thead>
+                <tr>
+                  <th>Field</th>
+                  <th>Value</th>
+                </tr>
+              </thead>
+              <tbody id="metadataTableBody">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+
+        </div>
       </div>
 
-      <div class="filter-group">
-        <button id="btnClearTable" class="btn btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
-          Clear View
-        </button>
-      </div>
-    </div>
-
-    <!-- Live Deliveries Table (Sorted by created_at DESC) -->
-    <div class="table-container">
-      <table id="deliveriesTable">
-        <thead>
-          <tr>
-            <th style="width: 170px;">Received At</th>
-            <th style="width: 90px;">Method</th>
-            <th style="width: 220px;">Webhook Target</th>
-            <th style="width: 140px;">Client IP</th>
-            <th>Payload Preview</th>
-            <th style="width: 110px; text-align: right;">Action</th>
-          </tr>
-        </thead>
-        <tbody id="deliveriesBody">
-          <!-- Populated by JavaScript and SSE -->
-        </tbody>
-      </table>
-
-      <div id="emptyState" class="empty-state">
-        <div class="empty-state-icon">📡</div>
-        <h3>No Webhooks Received Yet</h3>
-        <p style="margin-top: 0.5rem; font-size: 0.9rem;">
-          Generate a Webhook ID above and dispatch requests to <code style="color: #a5b4fc;">/api/webhooks/:id/incoming</code>.
+      <!-- Empty State for Right Pane (when no item is selected) -->
+      <div id="detailEmptyState" class="empty-pane" style="display: none;">
+        <div class="empty-pane-icon">🔍</div>
+        <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.4rem;">No Webhook Selected</div>
+        <p style="font-size: 0.85rem; max-width: 380px; line-height: 1.6;">
+          Select any delivery item from the left panel to inspect its complete payload, headers, query parameters, and network metadata.
         </p>
       </div>
-    </div>
+
+    </section>
   </main>
 
   <!-- Create Webhook Modal -->
@@ -783,70 +965,31 @@
       </div>
       <div class="modal-body">
         <div style="margin-bottom: 1.25rem;">
-          <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem;">
-            Webhook Label / Name (optional)
+          <label style="display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem;">
+            Webhook Label / Channel Name (optional)
           </label>
           <input type="text" id="newWebhookName" class="text-input" placeholder="e.g., Stripe Payout Events" style="width: 100%;">
         </div>
 
         <div id="createdWebhookResult" style="display: none; margin-top: 1.5rem;">
-          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
-            <div style="color: #34d399; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem;">✓ Webhook Endpoint Ready!</div>
-            <div style="font-size: 0.82rem; color: var(--text-muted);">Rate limiter active: 10 requests / minute max.</div>
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-sm); padding: 0.85rem; margin-bottom: 1rem;">
+            <div style="color: #34d399; font-weight: 600; font-size: 0.88rem; margin-bottom: 0.2rem;">✓ Webhook Endpoint Ready!</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">Rate limiter active: 10 requests / minute max.</div>
           </div>
 
-          <label style="display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.3rem;">Target Inbound URL:</label>
+          <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Target Inbound URL:</label>
           <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
-            <input type="text" id="createdWebhookUrl" class="text-input mono-cell" readonly style="width: 100%;">
+            <input type="text" id="createdWebhookUrl" class="text-input" readonly style="width: 100%; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;">
             <button class="btn btn-secondary" onclick="copyInput('createdWebhookUrl')">Copy</button>
           </div>
 
-          <label style="display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.3rem;">Ready-to-run Test cURL:</label>
-          <div class="code-box" id="createdWebhookCurl"></div>
+          <label style="display: block; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem;">Test cURL Command:</label>
+          <pre class="code-view" id="createdWebhookCurl" style="max-height: 140px; padding: 0.75rem; border-radius: var(--radius-sm);"></pre>
         </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('createWebhookModal')">Close</button>
         <button id="btnSubmitCreateWebhook" class="btn btn-primary">Generate Webhook</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Delivery Inspector Modal -->
-  <div id="inspectModal" class="modal-backdrop">
-    <div class="modal-dialog">
-      <div class="modal-header">
-        <div class="modal-title">
-          <span id="inspectMethodBadge" class="badge-method badge-post">POST</span>
-          <span id="inspectTitle">Webhook Delivery Details</span>
-        </div>
-        <button class="modal-close" onclick="closeModal('inspectModal')">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="modal-tabs">
-          <button class="modal-tab active" onclick="switchInspectTab('body')">Payload Body</button>
-          <button class="modal-tab" onclick="switchInspectTab('headers')">Headers</button>
-          <button class="modal-tab" onclick="switchInspectTab('query')">Query Params</button>
-          <button class="modal-tab" onclick="switchInspectTab('metadata')">Metadata & IP</button>
-        </div>
-
-        <div id="tabContentBody">
-          <div class="code-box" id="inspectBodyCode"></div>
-        </div>
-        <div id="tabContentHeaders" style="display: none;">
-          <div class="code-box" id="inspectHeadersCode"></div>
-        </div>
-        <div id="tabContentQuery" style="display: none;">
-          <div class="code-box" id="inspectQueryCode"></div>
-        </div>
-        <div id="tabContentMetadata" style="display: none;">
-          <div class="code-box" id="inspectMetadataCode"></div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <span id="copyFeedback" class="copy-success">✓ Copied to clipboard</span>
-        <button class="btn btn-secondary" onclick="copyActiveInspectJson()">Copy JSON</button>
-        <button class="btn btn-primary" onclick="closeModal('inspectModal')">Done</button>
       </div>
     </div>
   </div>
@@ -861,14 +1004,14 @@
         <button class="modal-close" onclick="closeModal('testCurlModal')">&times;</button>
       </div>
       <div class="modal-body">
-        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem;">
-          Run this cURL in your terminal to dispatch a simulated payment webhook event directly to the server:
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Dispatch a simulated webhook payload directly to the server:
         </p>
-        <div class="code-box" id="quickCurlBox"></div>
+        <pre class="code-view" id="quickCurlBox" style="padding: 1rem; border-radius: var(--radius-sm); max-height: 250px;"></pre>
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeModal('testCurlModal')">Close</button>
-        <button class="btn btn-primary" onclick="copyBox('quickCurlBox')">Copy cURL</button>
+        <button class="btn btn-primary" onclick="copyBoxText('quickCurlBox')">Copy cURL</button>
       </div>
     </div>
   </div>
@@ -883,22 +1026,33 @@
     let activeDelivery = null;
     let eventSource = null;
     let selectedWebhookId = 'all';
+    let searchQuery = '';
+    let currentTab = 'body';
 
     // Elements
     const sseBadge = document.getElementById('sseStatusBadge');
     const sseText = document.getElementById('sseStatusText');
-    const deliveriesBody = document.getElementById('deliveriesBody');
-    const emptyState = document.getElementById('emptyState');
+    const deliveriesListEl = document.getElementById('deliveriesList');
+    const emptyListState = document.getElementById('emptyListState');
     const webhookFilter = document.getElementById('webhookFilter');
+    const searchInput = document.getElementById('searchInput');
     const metricTotalDeliveries = document.getElementById('metricTotalDeliveries');
     const metricActiveWebhooks = document.getElementById('metricActiveWebhooks');
     const metricLastDelivery = document.getElementById('metricLastDelivery');
 
-    // Initialize
+    const detailView = document.getElementById('detailView');
+    const detailEmptyState = document.getElementById('detailEmptyState');
+
+    // Initialize App
     async function init() {
       await loadWebhooks();
       await loadLogs();
       connectSSE();
+
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value.toLowerCase().trim();
+        renderList();
+      });
     }
 
     // Load webhooks list
@@ -943,8 +1097,17 @@
 
         if (json.success && json.data) {
           deliveries = json.data;
-          renderTable();
+          renderList();
           updateMetrics();
+
+          // Auto-select first item if none selected or if active one is gone
+          if (deliveries.length > 0) {
+            if (!activeDelivery || !deliveries.some(d => d.id === activeDelivery.id)) {
+              selectDelivery(deliveries[0]);
+            }
+          } else {
+            selectDelivery(null);
+          }
         }
       } catch (err) {
         console.error('Failed to load logs:', err);
@@ -971,7 +1134,7 @@
         sseText.textContent = 'SSE Live Connected';
       };
 
-      eventSource.addEventListener('connected', (e) => {
+      eventSource.addEventListener('connected', () => {
         sseBadge.className = 'sse-badge connected';
         sseText.textContent = 'SSE Live Connected';
       });
@@ -991,54 +1154,71 @@
       };
     }
 
-    // Prepend incoming webhook to table
+    // Handle incoming SSE delivery
     function handleIncomingDelivery(delivery) {
-      // Check if matches active filter
       if (selectedWebhookId !== 'all' && delivery.webhook_id !== selectedWebhookId) {
         return;
       }
 
-      // Check for duplicates
       if (deliveries.some(d => d.id === delivery.id)) return;
 
       deliveries.unshift(delivery);
       updateMetrics();
 
-      if (emptyState) emptyState.style.display = 'none';
+      if (emptyListState) emptyListState.style.display = 'none';
 
-      const tr = createRowElement(delivery);
-      tr.classList.add('row-incoming');
-      deliveriesBody.insertBefore(tr, deliveriesBody.firstChild);
+      // Insert at top of list
+      const card = createItemElement(delivery);
+      card.classList.add('row-incoming');
+      deliveriesListEl.insertBefore(card, deliveriesListEl.firstChild);
 
-      showToast(`⚡ New Webhook received: ${delivery.method} (${delivery.webhook_id.slice(0, 8)}...)`);
+      // If no delivery selected currently, select the incoming one
+      if (!activeDelivery) {
+        selectDelivery(delivery);
+      }
+
+      showToast(`⚡ New Webhook: ${delivery.method} (${delivery.webhook_id.slice(0, 8)}...)`);
     }
 
-    // Render table
-    function renderTable() {
-      deliveriesBody.innerHTML = '';
+    // Filter & Render Deliveries List
+    function renderList() {
+      deliveriesListEl.innerHTML = '';
 
-      if (!deliveries || deliveries.length === 0) {
-        emptyState.style.display = 'block';
+      let filtered = deliveries;
+      if (searchQuery) {
+        filtered = filtered.filter(d => {
+          const targetStr = (d.webhook_name || '') + ' ' + d.webhook_id + ' ' + d.ip + ' ' + (d.raw_body || JSON.stringify(d.body || ''));
+          return targetStr.toLowerCase().includes(searchQuery);
+        });
+      }
+
+      if (filtered.length === 0) {
+        emptyListState.style.display = 'flex';
+        if (deliveries.length === 0) {
+          selectDelivery(null);
+        }
         return;
       }
 
-      emptyState.style.display = 'none';
-      deliveries.forEach(del => {
-        const tr = createRowElement(del);
-        deliveriesBody.appendChild(tr);
+      emptyListState.style.display = 'none';
+      filtered.forEach(del => {
+        const itemEl = createItemElement(del);
+        deliveriesListEl.appendChild(itemEl);
       });
     }
 
-    function createRowElement(del) {
-      const tr = document.createElement('tr');
-      tr.id = `row-${del.id}`;
+    function createItemElement(del) {
+      const card = document.createElement('div');
+      card.className = 'delivery-item';
+      card.id = `item-${del.id}`;
 
-      // Date formatting
+      if (activeDelivery && activeDelivery.id === del.id) {
+        card.classList.add('active');
+      }
+
       const dateObj = new Date(del.created_at || Date.now());
       const relativeTime = getRelativeTime(dateObj);
-      const exactTime = dateObj.toLocaleTimeString();
 
-      // Method badge
       const method = (del.method || 'POST').toUpperCase();
       let badgeClass = 'badge-post';
       if (method === 'GET') badgeClass = 'badge-get';
@@ -1046,7 +1226,6 @@
       else if (method === 'DELETE') badgeClass = 'badge-delete';
       else if (method === 'PATCH') badgeClass = 'badge-patch';
 
-      // Preview text
       let preview = '';
       if (del.body) {
         try {
@@ -1058,93 +1237,140 @@
       } else if (del.raw_body) {
         preview = del.raw_body;
       } else {
-        preview = '(empty body)';
+        preview = '(empty payload)';
       }
 
-      const targetLabel = del.webhook_name
-        ? `${escapeHtml(del.webhook_name)} <br><span class="time-exact">${del.webhook_id.slice(0, 8)}...</span>`
-        : `<span class="mono-cell">${del.webhook_id ? del.webhook_id.slice(0, 13) + '...' : 'Unknown'}</span>`;
+      const targetTitle = del.webhook_name || `ID: ${del.webhook_id.slice(0, 8)}...`;
 
-      tr.innerHTML = `
-        <td>
-          <div class="time-cell">
-            <span class="time-relative">${relativeTime}</span>
-            <span class="time-exact">${exactTime}</span>
-          </div>
-        </td>
-        <td>
+      card.innerHTML = `
+        <div class="delivery-item-header">
           <span class="badge-method ${badgeClass}">${method}</span>
-        </td>
-        <td>
-          ${targetLabel}
-        </td>
-        <td class="mono-cell">
-          ${escapeHtml(del.ip || '127.0.0.1')}
-        </td>
-        <td>
-          <div class="preview-pill" title="${escapeHtml(preview)}">${escapeHtml(preview)}</div>
-        </td>
-        <td style="text-align: right;">
-          <button class="btn-inspect" onclick="inspectDelivery('${del.id}')">Inspect</button>
-        </td>
+          <span class="item-time" title="${dateObj.toISOString()}">${relativeTime}</span>
+        </div>
+        <div class="item-meta-line">
+          <span class="item-target" title="${escapeHtml(del.webhook_id)}">${escapeHtml(targetTitle)}</span>
+          <span class="item-ip">${escapeHtml(del.ip || '127.0.0.1')}</span>
+        </div>
+        <div class="item-preview" title="${escapeHtml(preview)}">${escapeHtml(preview)}</div>
       `;
 
-      return tr;
+      card.addEventListener('click', () => {
+        selectDelivery(del);
+      });
+
+      return card;
     }
+
+    // Select delivery and populate right-hand detail pane
+    function selectDelivery(del) {
+      activeDelivery = del;
+
+      // Update list active styling
+      document.querySelectorAll('.delivery-item').forEach(el => el.classList.remove('active'));
+      if (del) {
+        const activeCard = document.getElementById(`item-${del.id}`);
+        if (activeCard) activeCard.classList.add('active');
+      }
+
+      if (!del) {
+        detailView.style.display = 'none';
+        detailEmptyState.style.display = 'flex';
+        return;
+      }
+
+      detailView.style.display = 'flex';
+      detailEmptyState.style.display = 'none';
+
+      // Header info
+      const badge = document.getElementById('detailMethodBadge');
+      badge.textContent = del.method;
+      badge.className = `badge-method badge-${(del.method || 'post').toLowerCase()}`;
+
+      document.getElementById('detailTitle').textContent = `Delivery: ${del.id.slice(0, 8)}...`;
+      document.getElementById('detailTimeRelative').textContent = getRelativeTime(new Date(del.created_at));
+      document.getElementById('detailTimeRelative').title = new Date(del.created_at).toLocaleString();
+      document.getElementById('detailIpPill').textContent = `IP: ${del.ip || '127.0.0.1'}`;
+
+      // Body tab
+      const bodyFormatted = formatJson(del.body !== undefined ? del.body : (del.raw_body || {}));
+      document.getElementById('detailBodyCode').textContent = bodyFormatted;
+
+      // Headers tab
+      const headers = del.headers || {};
+      const headerKeys = Object.keys(headers);
+      document.getElementById('badgeHeadersCount').textContent = headerKeys.length;
+      document.getElementById('detailHeadersCode').textContent = formatJson(headers);
+
+      const headersTbody = document.getElementById('headersTableBody');
+      headersTbody.innerHTML = '';
+      headerKeys.forEach(k => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="kv-key">${escapeHtml(k)}</td><td class="kv-value">${escapeHtml(headers[k])}</td>`;
+        headersTbody.appendChild(tr);
+      });
+
+      // Query params tab
+      const query = del.query || {};
+      const queryKeys = Object.keys(query);
+      document.getElementById('badgeQueryCount').textContent = queryKeys.length;
+      document.getElementById('detailQueryCode').textContent = formatJson(query);
+
+      const queryTbody = document.getElementById('queryTableBody');
+      queryTbody.innerHTML = '';
+      if (queryKeys.length === 0) {
+        queryTbody.innerHTML = `<tr><td colspan="2" style="color: var(--text-dim); text-align: center; padding: 1.5rem;">No query parameters sent.</td></tr>`;
+      } else {
+        queryKeys.forEach(k => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="kv-key">${escapeHtml(k)}</td><td class="kv-value">${escapeHtml(query[k])}</td>`;
+          queryTbody.appendChild(tr);
+        });
+      }
+
+      // Metadata tab
+      const metaTbody = document.getElementById('metadataTableBody');
+      metaTbody.innerHTML = `
+        <tr><td class="kv-key">Delivery UUID</td><td class="kv-value">${escapeHtml(del.id)}</td></tr>
+        <tr><td class="kv-key">Target Webhook ID</td><td class="kv-value">${escapeHtml(del.webhook_id)}</td></tr>
+        <tr><td class="kv-key">Channel Name</td><td class="kv-value">${escapeHtml(del.webhook_name || 'None')}</td></tr>
+        <tr><td class="kv-key">HTTP Method</td><td class="kv-value">${escapeHtml(del.method)}</td></tr>
+        <tr><td class="kv-key">Client Source IP</td><td class="kv-value">${escapeHtml(del.ip)}</td></tr>
+        <tr><td class="kv-key">Received Timestamp</td><td class="kv-value">${escapeHtml(del.created_at)}</td></tr>
+        <tr><td class="kv-key">Host Header</td><td class="kv-value">${escapeHtml(del.metadata?.host || '-')}</td></tr>
+        <tr><td class="kv-key">User-Agent</td><td class="kv-value">${escapeHtml(del.metadata?.userAgent || '-')}</td></tr>
+        <tr><td class="kv-key">Content-Type</td><td class="kv-value">${escapeHtml(del.metadata?.contentType || '-')}</td></tr>
+        <tr><td class="kv-key">Content-Length</td><td class="kv-value">${escapeHtml(del.metadata?.contentLength || '-')}</td></tr>
+      `;
+
+      switchDetailTab(currentTab);
+    }
+
+    // Switch between detail tabs
+    window.switchDetailTab = function(tab) {
+      currentTab = tab;
+      const tabs = ['body', 'headers', 'query', 'metadata'];
+
+      tabs.forEach(t => {
+        const contentEl = document.getElementById(`tabContent${capitalize(t)}`);
+        if (contentEl) {
+          contentEl.style.display = t === tab ? 'flex' : 'none';
+        }
+      });
+
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', tabs[idx] === tab);
+      });
+    };
 
     function updateMetrics() {
       metricTotalDeliveries.textContent = deliveries.length;
       if (deliveries.length > 0) {
         const lastDate = new Date(deliveries[0].created_at);
-        metricLastDelivery.textContent = lastDate.toLocaleTimeString();
+        metricLastDelivery.textContent = `Last: ${lastDate.toLocaleTimeString()}`;
       } else {
         metricLastDelivery.textContent = 'None';
       }
     }
-
-    // Inspect Delivery Modal
-    window.inspectDelivery = function(id) {
-      activeDelivery = deliveries.find(d => d.id === id);
-      if (!activeDelivery) return;
-
-      document.getElementById('inspectTitle').textContent = `Delivery: ${activeDelivery.id.slice(0, 8)}...`;
-      const badge = document.getElementById('inspectMethodBadge');
-      badge.textContent = activeDelivery.method;
-      badge.className = `badge-method badge-${(activeDelivery.method || 'post').toLowerCase()}`;
-
-      // Tab contents
-      document.getElementById('inspectBodyCode').textContent = formatJson(activeDelivery.body || activeDelivery.raw_body || {});
-      document.getElementById('inspectHeadersCode').textContent = formatJson(activeDelivery.headers || {});
-      document.getElementById('inspectQueryCode').textContent = formatJson(activeDelivery.query || {});
-      document.getElementById('inspectMetadataCode').textContent = formatJson({
-        ip: activeDelivery.ip,
-        metadata: activeDelivery.metadata,
-        created_at: activeDelivery.created_at,
-        webhook_id: activeDelivery.webhook_id
-      });
-
-      switchInspectTab('body');
-      openModal('inspectModal');
-    };
-
-    window.switchInspectTab = function(tab) {
-      const tabs = ['body', 'headers', 'query', 'metadata'];
-      tabs.forEach(t => {
-        document.getElementById(`tabContent${capitalize(t)}`).style.display = t === tab ? 'block' : 'none';
-      });
-
-      document.querySelectorAll('.modal-tab').forEach((el, idx) => {
-        el.classList.toggle('active', tabs[idx] === tab);
-      });
-    };
-
-    window.copyActiveInspectJson = function() {
-      if (!activeDelivery) return;
-      navigator.clipboard.writeText(JSON.stringify(activeDelivery, null, 2));
-      const fb = document.getElementById('copyFeedback');
-      fb.style.display = 'inline';
-      setTimeout(() => { fb.style.display = 'none'; }, 2000);
-    };
 
     // Filter change
     webhookFilter.addEventListener('change', () => {
@@ -1161,10 +1387,46 @@
 
     document.getElementById('btnClearTable').addEventListener('click', () => {
       deliveries = [];
-      renderTable();
+      renderList();
+      selectDelivery(null);
       updateMetrics();
       showToast('View cleared');
     });
+
+    // Copy handlers
+    window.copyActivePayload = function() {
+      if (!activeDelivery) return;
+      const bodyStr = formatJson(activeDelivery.body !== undefined ? activeDelivery.body : (activeDelivery.raw_body || {}));
+      navigator.clipboard.writeText(bodyStr);
+      showToast('Payload body copied!');
+    };
+
+    window.copyFullDeliveryJson = function() {
+      if (!activeDelivery) return;
+      navigator.clipboard.writeText(JSON.stringify(activeDelivery, null, 2));
+      showToast('Complete delivery record copied!');
+    };
+
+    window.copyBoxText = function(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text);
+      showToast('Copied to clipboard!');
+    };
+
+    window.copyInput = function(id) {
+      const el = document.getElementById(id);
+      navigator.clipboard.writeText(el.value);
+      showToast('URL copied to clipboard!');
+    };
+
+    // Modal Handlers
+    window.openModal = function(id) {
+      document.getElementById(id).classList.add('open');
+    };
+
+    window.closeModal = function(id) {
+      document.getElementById(id).classList.remove('open');
+    };
 
     // Create Webhook
     document.getElementById('btnCreateWebhook').addEventListener('click', () => {
@@ -1201,7 +1463,6 @@
           document.getElementById('createdWebhookResult').style.display = 'block';
           document.getElementById('btnSubmitCreateWebhook').style.display = 'none';
 
-          // Select this webhook
           webhookFilter.value = webhook.id;
           selectedWebhookId = webhook.id;
           connectSSE();
@@ -1233,27 +1494,6 @@
       openModal('testCurlModal');
     });
 
-    // Helpers
-    function openModal(id) {
-      document.getElementById(id).classList.add('open');
-    }
-
-    window.closeModal = function(id) {
-      document.getElementById(id).classList.remove('open');
-    };
-
-    window.copyInput = function(id) {
-      const el = document.getElementById(id);
-      navigator.clipboard.writeText(el.value);
-      showToast('URL copied to clipboard!');
-    };
-
-    window.copyBox = function(id) {
-      const text = document.getElementById(id).textContent;
-      navigator.clipboard.writeText(text);
-      showToast('cURL copied to clipboard!');
-    };
-
     function showToast(msg) {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
@@ -1262,8 +1502,8 @@
       container.appendChild(toast);
       setTimeout(() => {
         toast.style.opacity = '0';
-        setTimeout(() => toast.remove(), 300);
-      }, 3000);
+        setTimeout(() => toast.remove(), 250);
+      }, 2500);
     }
 
     function formatJson(data) {
@@ -1299,7 +1539,6 @@
         .replace(/'/g, '&#039;');
     }
 
-    // Run init on DOM ready
     window.addEventListener('DOMContentLoaded', init);
   </script>
 </body>
