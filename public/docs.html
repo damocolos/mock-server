@@ -1038,6 +1038,12 @@
           <span class="status-dot" id="db-health-dot"></span>
           <span id="db-health-text">Checking DB...</span>
         </div>
+        <a href="/webhooks" class="btn-secondary" style="color: #818cf8; border-color: rgba(99, 102, 241, 0.4); background: rgba(99, 102, 241, 0.1);" title="Live Webhook Real-time Inspector">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          Live Webhook Inspector
+        </a>
         <a href="/" class="btn-secondary" title="View Root JSON Status" target="_blank">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
@@ -1085,6 +1091,36 @@
             <a href="#endpoint-dynamic" class="nav-link">
               <span class="method-pill pill-all">ALL</span>
               /api/dynamic/:id/*
+            </a>
+          </li>
+        </ul>
+      </div>
+
+      <div>
+        <div class="nav-group-title">Webhook Receiver Engine</div>
+        <ul class="nav-links">
+          <li>
+            <a href="/webhooks" class="nav-link" style="color: #a5b4fc; font-weight: 600;">
+              <span class="method-pill" style="background: rgba(99, 102, 241, 0.2); color: #a5b4fc;">LIVE</span>
+              Live Webhook Table (SSE)
+            </a>
+          </li>
+          <li>
+            <a href="#endpoint-webhook-create" class="nav-link">
+              <span class="method-pill pill-post">POST</span>
+              /api/webhooks
+            </a>
+          </li>
+          <li>
+            <a href="#endpoint-webhook-incoming" class="nav-link">
+              <span class="method-pill pill-all">ALL</span>
+              /api/webhooks/:id/incoming
+            </a>
+          </li>
+          <li>
+            <a href="#endpoint-webhook-stream" class="nav-link">
+              <span class="method-pill pill-get">GET</span>
+              /api/webhooks/stream
             </a>
           </li>
         </ul>
@@ -1613,6 +1649,89 @@
             <pre class="response-json" id="dynamic-res-json"></pre>
           </div>
         </div>
+      </section>
+
+      <!-- ENDPOINT 5: WEBHOOK RECEIVER ENGINE -->
+      <section id="endpoint-webhook-create" class="endpoint-card">
+        <div class="endpoint-header">
+          <div class="endpoint-badge-path">
+            <span class="method-tag post">POST</span>
+            <span class="endpoint-path">/api/webhooks</span>
+          </div>
+          <button class="copy-path-btn" onclick="copyText('/api/webhooks', this)">Copy Route</button>
+        </div>
+
+        <p class="endpoint-summary">
+          <strong>Create Webhook Endpoint (API Only):</strong> Generates a unique, active webhook target ID for external integrations (Stripe, GitHub, Shopify, PSPs).
+        </p>
+
+        <div class="specs-title">Request Body Example</div>
+        <div class="code-box" style="margin-bottom: 1.25rem;">
+<pre>{
+  "name": "Stripe Payouts Channel",
+  "metadata": { "env": "sandbox" }
+}</pre>
+        </div>
+
+        <div class="specs-title">Success Response (201 Created)</div>
+        <div class="code-box">
+<pre>{
+  "success": true,
+  "message": "Webhook endpoint created successfully.",
+  "data": {
+    "id": "3f98218a-98b7-4a0b-93e1-70bf891543aa",
+    "name": "Stripe Payouts Channel",
+    "status": "active",
+    "webhook_url": "http://localhost:3000/api/webhooks/3f98218a-98b7-4a0b-93e1-70bf891543aa/incoming",
+    "relative_url": "/api/webhooks/3f98218a-98b7-4a0b-93e1-70bf891543aa/incoming",
+    "created_at": "2026-10-26T12:00:00.000Z"
+  }
+}</pre>
+        </div>
+      </section>
+
+      <!-- ENDPOINT 6: INBOUND RECEIVER -->
+      <section id="endpoint-webhook-incoming" class="endpoint-card">
+        <div class="endpoint-header">
+          <div class="endpoint-badge-path">
+            <span class="method-tag all">ALL</span>
+            <span class="endpoint-path">/api/webhooks/<span class="param-highlight">:id</span>/incoming</span>
+          </div>
+          <button class="copy-path-btn" onclick="copyText('/api/webhooks/:id/incoming', this)">Copy Route</button>
+        </div>
+
+        <p class="endpoint-summary">
+          <strong>Inbound Webhook Receiver Gateway:</strong> Accepts any HTTP method from external providers.
+          <br>
+          &bull; <strong>Rate Limiter:</strong> Strict limit of <strong>10 requests per minute</strong> per webhook ID (returns <code>429 Too Many Requests</code> with <code>Retry-After</code>).
+          <br>
+          &bull; <strong>Validation:</strong> If ID is not found &rarr; <code>404 Not Found</code>. If deleted &rarr; <code>410 Gone</code>.
+          <br>
+          &bull; <strong>Persistence:</strong> Saves method, headers, query, body, IP, and metadata to PostgreSQL.
+          <br>
+          &bull; <strong>Acknowledgment:</strong> Returns immediate <code>200 OK</code> to the sender and broadcasts to the SSE stream.
+        </p>
+
+        <div style="margin-top: 1rem; display: flex; gap: 0.75rem;">
+          <a href="/webhooks" class="btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.65rem 1.25rem;">
+            <span>⚡</span> Open Live Webhooks Table
+          </a>
+        </div>
+      </section>
+
+      <!-- ENDPOINT 7: SSE STREAM -->
+      <section id="endpoint-webhook-stream" class="endpoint-card">
+        <div class="endpoint-header">
+          <div class="endpoint-badge-path">
+            <span class="method-tag get">GET</span>
+            <span class="endpoint-path">/api/webhooks/stream <span class="text-dim">or</span> /api/webhooks/<span class="param-highlight">:id</span>/stream</span>
+          </div>
+          <button class="copy-path-btn" onclick="copyText('/api/webhooks/stream', this)">Copy Route</button>
+        </div>
+
+        <p class="endpoint-summary">
+          <strong>Server-Sent Events (SSE) Real-Time Stream:</strong> Connects a persistent HTTP event stream (<code>text/event-stream</code>) that pushes newly arrived deliveries in real time as <code>event: webhook_received</code>.
+        </p>
       </section>
     </main>
   </div>

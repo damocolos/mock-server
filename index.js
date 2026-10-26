@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { Pool } = require('pg');
+const webhookService = require('./webhookService');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -14,12 +15,23 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json()); // To parse JSON request bodies
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.text({ type: ['text/*', 'application/xml'], limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Documentation route
+// Bootstrap webhook database tables
+webhookService.initWebhookTables(pool).catch(err => {
+  console.warn('[WebhookService] Table bootstrap warning:', err.message);
+});
+
+// Documentation & Webhook UI routes
 app.get(['/docs', '/docs/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'docs.html'));
+});
+
+app.get(['/webhooks', '/webhooks/'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'webhooks.html'));
 });
 
 // --- Entry point ---
@@ -371,6 +383,328 @@ app.all(['/api/dynamic/:id', '/api/dynamic/:id/*path'], async (req, res) => {
   }
 });
 
+// ==========================================
+// --- WEBHOOK RECEIVER ENGINE ENDPOINTS ---
+// ==========================================
+
+// 1. Create Webhook ID (API only)
+app.post('/api/webhooks', async (req, res) => {
+  try {
+    const { name, metadata } = req.body || {};
+    const webhook = await webhookService.createWebhook(pool, { name, metadata });
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    res.status(201).json({
+      success: true,
+      message: 'Webhook endpoint created successfully.',
+      data: {
+        id: webhook.id,
+        name: webhook.name,
+        status: webhook.status,
+        webhook_url: `${baseUrl}/api/webhooks/${webhook.id}/incoming`,
+        relative_url: `/api/webhooks/${webhook.id}/incoming`,
+        created_at: webhook.created_at
+      }
+    });
+  } catch (err) {
+    console.error('Error creating webhook:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to create webhook endpoint.'
+    });
+  }
+});
+
+// 2. List all Webhooks
+app.get('/api/webhooks', async (req, res) => {
+  try {
+    const webhooks = await webhookService.listWebhooks(pool);
+    res.json({
+      success: true,
+      data: webhooks
+    });
+  } catch (err) {
+    console.error('Error listing webhooks:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to retrieve webhooks.'
+    });
+  }
+});
+
+// 3. Get specific Webhook details
+app.get('/api/webhooks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const webhook = await webhookService.getWebhook(pool, id);
+
+    if (!webhook) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Webhook ID unidentified or not found.'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: webhook
+    });
+  } catch (err) {
+    console.error('Error fetching webhook:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch webhook details.'
+    });
+  }
+});
+
+// 4. Soft-delete Webhook
+app.delete('/api/webhooks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const webhook = await webhookService.getWebhook(pool, id);
+
+    if (!webhook) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Webhook ID unidentified or not found.'
+      });
+    }
+
+    if (webhook.status === 'deleted' || webhook.deleted_at) {
+      return res.status(400).json({
+        success: false,
+        error: 'Bad Request',
+        message: 'Webhook endpoint is already deleted.'
+      });
+    }
+
+    await webhookService.deleteWebhook(pool, id);
+
+    res.json({
+      success: true,
+      message: 'Webhook deleted successfully.'
+    });
+  } catch (err) {
+    console.error('Error deleting webhook:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to delete webhook.'
+    });
+  }
+});
+
+// 5. Inbound Webhook Receiver
+// Flow: Rate limit check (10 req/min) -> Validate ID (404/410) -> Extract & Save -> 200 OK -> SSE broadcast
+app.all(['/api/webhooks/:id/incoming', '/api/webhooks/:id'], async (req, res, next) => {
+  // If matched standard REST routes on exact base path, allow them to proceed
+  if (req.path === `/api/webhooks/${req.params.id}` && (req.method === 'GET' || req.method === 'DELETE')) {
+    return next();
+  }
+
+  const { id } = req.params;
+
+  // 1. Rate limiter: max 10 requests per minute per webhook ID
+  const limitStatus = webhookService.rateLimiter.check(id);
+  res.setHeader('X-RateLimit-Limit', limitStatus.limit);
+  res.setHeader('X-RateLimit-Remaining', limitStatus.remaining);
+  res.setHeader('X-RateLimit-Reset', limitStatus.resetSeconds);
+
+  if (!limitStatus.allowed) {
+    res.setHeader('Retry-After', limitStatus.retryAfter);
+    return res.status(429).json({
+      success: false,
+      error: 'Too Many Requests',
+      message: 'Rate limit exceeded. Maximum 10 requests per minute allowed for this webhook endpoint.',
+      retry_after_seconds: limitStatus.retryAfter
+    });
+  }
+
+  try {
+    // 2. Validate webhook existence and deletion status
+    const webhook = await webhookService.getWebhook(pool, id);
+
+    if (!webhook) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Webhook ID unidentified or invalid.'
+      });
+    }
+
+    if (webhook.status === 'deleted' || webhook.deleted_at) {
+      return res.status(410).json({
+        success: false,
+        error: 'Gone',
+        message: 'Webhook endpoint has been deleted or deactivated.'
+      });
+    }
+
+    // 3. Extract request details: headers, body, query, ip, metadata
+    const forwarded = req.headers['x-forwarded-for'];
+    const clientIp = (typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : null) ||
+                     req.socket?.remoteAddress ||
+                     req.ip ||
+                     '127.0.0.1';
+
+    let parsedBody = req.body;
+    let rawBody = null;
+
+    if (typeof req.body === 'string') {
+      rawBody = req.body;
+      try {
+        parsedBody = JSON.parse(req.body);
+      } catch {
+        parsedBody = { raw: req.body };
+      }
+    } else if (req.body && typeof req.body === 'object') {
+      rawBody = JSON.stringify(req.body);
+    }
+
+    const metadata = {
+      host: req.get('host'),
+      protocol: req.protocol,
+      userAgent: req.get('user-agent') || 'Unknown',
+      contentType: req.get('content-type') || 'Unknown',
+      contentLength: req.get('content-length') || null,
+      receivedAt: new Date().toISOString()
+    };
+
+    // 4. Save record to database
+    const savedLog = await webhookService.recordWebhookLog(pool, {
+      webhook_id: id,
+      method: req.method,
+      headers: req.headers,
+      query: req.query,
+      body: parsedBody,
+      raw_body: rawBody,
+      ip: clientIp,
+      metadata
+    });
+
+    // 5. Send status OK 200 once received
+    return res.status(200).json({
+      success: true,
+      message: 'Webhook received successfully',
+      data: {
+        delivery_id: savedLog.id,
+        webhook_id: id,
+        timestamp: savedLog.created_at
+      }
+    });
+  } catch (err) {
+    console.error('Error handling incoming webhook:', err);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to process incoming webhook.'
+    });
+  }
+});
+
+// 6. Get logs for a specific webhook (sorted created_at DESC)
+app.get('/api/webhooks/:id/logs', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { limit, offset } = req.query;
+
+    const webhook = await webhookService.getWebhook(pool, id);
+    if (!webhook) {
+      return res.status(404).json({
+        success: false,
+        error: 'Not Found',
+        message: 'Webhook ID unidentified or not found.'
+      });
+    }
+
+    const logs = await webhookService.getWebhookLogs(pool, {
+      webhook_id: id,
+      limit,
+      offset
+    });
+
+    res.json({
+      success: true,
+      data: logs
+    });
+  } catch (err) {
+    console.error('Error fetching webhook logs:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch webhook logs.'
+    });
+  }
+});
+
+// 7. Global Webhook Logs (for dashboard table sorted created_at DESC)
+app.get('/api/webhooks-logs', async (req, res) => {
+  try {
+    const { limit, offset } = req.query;
+    const logs = await webhookService.getWebhookLogs(pool, {
+      webhook_id: null,
+      limit,
+      offset
+    });
+
+    res.json({
+      success: true,
+      data: logs
+    });
+  } catch (err) {
+    console.error('Error fetching global webhook logs:', err);
+    res.status(500).json({
+      success: false,
+      error: 'Internal Server Error',
+      message: 'Failed to fetch webhook logs.'
+    });
+  }
+});
+
+// 8. Server-Sent Events (SSE) Stream to push real-time received webhooks
+app.get(['/api/webhooks/stream', '/api/webhooks/:id/stream'], (req, res) => {
+  const targetWebhookId = req.params.id || null;
+
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache, no-transform',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*'
+  });
+
+  // Initial connection handshake
+  res.write(`event: connected\ndata: ${JSON.stringify({
+    status: 'connected',
+    target: targetWebhookId || 'all',
+    timestamp: new Date().toISOString()
+  })}\n\n`);
+
+  const onDelivery = (payload) => {
+    if (!targetWebhookId || targetWebhookId === payload.webhook_id) {
+      res.write(`event: webhook_received\ndata: ${JSON.stringify(payload)}\n\n`);
+    }
+  };
+
+  webhookService.webhookEmitter.on('delivery', onDelivery);
+
+  // Keep-alive heartbeat every 20 seconds
+  const heartbeat = setInterval(() => {
+    res.write(': ping\n\n');
+  }, 20000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    webhookService.webhookEmitter.removeListener('delivery', onDelivery);
+    res.end();
+  });
+});
+
 // Fallback for any other route
 app.use((req, res) => {
   res.status(404).json({
@@ -386,6 +720,15 @@ if (process.env.NODE_ENV !== 'production') {
     console.log(`Mock server is running on http://localhost:${PORT}`);
     console.log('Available endpoints:');
     console.log('  GET  /docs (API Documentation Page)');
+    console.log('  GET  /webhooks (Live Webhook Inspector Dashboard)');
+    console.log('  POST /api/webhooks (Create Webhook ID)');
+    console.log('  GET  /api/webhooks (List Webhooks)');
+    console.log('  GET  /api/webhooks/:id (Get Webhook)');
+    console.log('  DEL  /api/webhooks/:id (Soft-delete Webhook)');
+    console.log('  ALL  /api/webhooks/:id/incoming (Inbound Webhook Receiver - 10 req/min)');
+    console.log('  GET  /api/webhooks/:id/logs (Webhook Logs DESC)');
+    console.log('  GET  /api/webhooks-logs (Global Logs DESC)');
+    console.log('  GET  /api/webhooks/stream (SSE Real-time Stream)');
     console.log('  POST /api/mocks');
     console.log('  GET  /api/mocks/:id');
     console.log('  PATCH /api/mocks/:id');

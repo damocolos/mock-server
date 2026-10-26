@@ -1,0 +1,1306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Webhook Receiver & Live Stream Inspector | Mock Server</title>
+  <meta name="description" content="Live Server-Sent Events (SSE) webhook receiver, real-time delivery inspector, and rate-limited endpoint manager.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #080b11;
+      --bg-surface: #0e131f;
+      --bg-elevated: #151c2e;
+      --bg-overlay: #1c253d;
+      --bg-input: #0a0e17;
+
+      --border-subtle: rgba(255, 255, 255, 0.08);
+      --border-focus: rgba(99, 102, 241, 0.5);
+      --border-glow: rgba(99, 102, 241, 0.2);
+
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+
+      --primary: #6366f1;
+      --primary-hover: #4f46e5;
+      --primary-glow: rgba(99, 102, 241, 0.25);
+
+      --color-post: #10b981;
+      --color-post-bg: rgba(16, 185, 129, 0.12);
+      --color-post-border: rgba(16, 185, 129, 0.28);
+
+      --color-get: #3b82f6;
+      --color-get-bg: rgba(59, 130, 246, 0.12);
+      --color-get-border: rgba(59, 130, 246, 0.28);
+
+      --color-put: #f59e0b;
+      --color-put-bg: rgba(245, 158, 11, 0.12);
+      --color-put-border: rgba(245, 158, 11, 0.28);
+
+      --color-delete: #ef4444;
+      --color-delete-bg: rgba(239, 68, 68, 0.12);
+      --color-delete-border: rgba(239, 68, 68, 0.28);
+
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 18px;
+
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+      --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.4);
+      --shadow-glow: 0 0 35px rgba(99, 102, 241, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Navigation */
+    header {
+      background: rgba(14, 19, 31, 0.85);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 0.85rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+
+    .brand-icon {
+      width: 34px;
+      height: 34px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: #fff;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-title span {
+      color: var(--text-muted);
+      font-weight: 400;
+      font-size: 0.95rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+
+    .nav-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-link:hover, .nav-link.active {
+      color: var(--text-main);
+    }
+
+    /* SSE Status Badge */
+    .sse-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      padding: 0.35rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: #64748b;
+      position: relative;
+    }
+
+    .sse-badge.connected .pulse-dot {
+      background-color: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      animation: pulseGreen 2s infinite;
+    }
+
+    .sse-badge.connected {
+      color: #34d399;
+      border-color: rgba(16, 185, 129, 0.3);
+      background: rgba(16, 185, 129, 0.08);
+    }
+
+    .sse-badge.connecting .pulse-dot {
+      background-color: #f59e0b;
+      animation: pulseAmber 1.5s infinite;
+    }
+
+    @keyframes pulseGreen {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    @keyframes pulseAmber {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+      70% { transform: scale(1.15); box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      max-width: 1400px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* Hero / Action Toolbar */
+    .hero-banner {
+      background: linear-gradient(135deg, rgba(21, 28, 46, 0.8), rgba(14, 19, 31, 0.95));
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: 1.75rem 2rem;
+      margin-bottom: 2rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .hero-text h1 {
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.35rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .hero-text p {
+      color: var(--text-muted);
+      font-size: 0.92rem;
+      max-width: 680px;
+    }
+
+    .rate-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      background: rgba(99, 102, 241, 0.15);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      color: #a5b4fc;
+      padding: 0.2rem 0.6rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.25rem;
+      border-radius: var(--radius-md);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 4px 14px var(--primary-glow);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-overlay);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    /* Metric Cards */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .metric-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.5rem;
+    }
+
+    .metric-title {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.4rem;
+    }
+
+    .metric-value {
+      font-size: 1.75rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-main);
+    }
+
+    .metric-sub {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+      margin-top: 0.2rem;
+    }
+
+    /* Controls Bar */
+    .controls-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: 0.85rem 1.25rem;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .select-input, .text-input {
+      background: var(--bg-input);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 0.55rem 0.85rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .select-input:focus, .text-input:focus {
+      border-color: var(--primary);
+    }
+
+    /* Table Container */
+    .table-container {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+
+    thead {
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    th {
+      padding: 0.95rem 1.25rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-subtle);
+      vertical-align: middle;
+    }
+
+    tbody tr {
+      transition: background-color 0.15s;
+    }
+
+    tbody tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    /* Animated Highlight for New SSE Rows */
+    @keyframes highlightRow {
+      0% { background-color: rgba(99, 102, 241, 0.35); }
+      100% { background-color: transparent; }
+    }
+
+    .row-incoming {
+      animation: highlightRow 2.5s ease-out;
+    }
+
+    /* HTTP Method Badges */
+    .badge-method {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      text-align: center;
+      min-width: 58px;
+    }
+
+    .badge-post { background: var(--color-post-bg); color: var(--color-post); border: 1px solid var(--color-post-border); }
+    .badge-get { background: var(--color-get-bg); color: var(--color-get); border: 1px solid var(--color-get-border); }
+    .badge-put { background: var(--color-put-bg); color: var(--color-put); border: 1px solid var(--color-put-border); }
+    .badge-delete { background: var(--color-delete-bg); color: var(--color-delete); border: 1px solid var(--color-delete-border); }
+    .badge-patch { background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    .mono-cell {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      color: #cbd5e1;
+    }
+
+    .preview-pill {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      padding: 0.25rem 0.55rem;
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      display: inline-block;
+    }
+
+    .time-cell {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .time-relative {
+      font-weight: 600;
+      color: var(--text-main);
+      font-size: 0.85rem;
+    }
+
+    .time-exact {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .btn-inspect {
+      background: var(--bg-elevated);
+      color: var(--text-main);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 0.35rem 0.75rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-inspect:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    /* Empty state */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.6;
+    }
+
+    /* Modal Backdrop & Dialog */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(6px);
+      z-index: 1000;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-dialog {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      width: 100%;
+      max-width: 820px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-md), 0 0 40px rgba(0, 0, 0, 0.8);
+      overflow: hidden;
+    }
+
+    .modal-header {
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-elevated);
+    }
+
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0.25rem;
+      border-radius: var(--radius-sm);
+    }
+
+    .modal-close:hover {
+      color: var(--text-main);
+    }
+
+    .modal-body {
+      padding: 1.5rem 1.75rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    .modal-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--border-subtle);
+      margin-bottom: 1.25rem;
+    }
+
+    .modal-tab {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 0.65rem 1.1rem;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.2s;
+    }
+
+    .modal-tab.active {
+      color: var(--primary);
+    }
+
+    .modal-tab.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--primary);
+    }
+
+    .code-box {
+      background: var(--bg-input);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem;
+      color: #f1f5f9;
+      max-height: 380px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.75rem;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-elevated);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    .copy-success {
+      color: #34d399;
+      font-size: 0.8rem;
+      margin-right: auto;
+      align-self: center;
+      display: none;
+    }
+
+    /* Toast Notification */
+    .toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .toast {
+      background: var(--bg-overlay);
+      border: 1px solid var(--border-focus);
+      box-shadow: var(--shadow-md);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1.25rem;
+      font-size: 0.88rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      color: var(--text-main);
+      animation: slideInToast 0.3s ease-out;
+    }
+
+    @keyframes slideInToast {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <header>
+    <a href="/docs" class="brand">
+      <div class="brand-icon">⚡</div>
+      <div class="brand-title">MockServer <span>// Webhook Engine</span></div>
+    </a>
+
+    <div class="nav-links">
+      <div id="sseStatusBadge" class="sse-badge connecting">
+        <div class="pulse-dot"></div>
+        <span id="sseStatusText">Connecting SSE...</span>
+      </div>
+      <a href="/docs" class="nav-link">API Docs</a>
+      <a href="/webhooks" class="nav-link active">Live Webhooks</a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Hero / Creation Bar -->
+    <section class="hero-banner">
+      <div class="hero-text">
+        <h1>
+          Live Webhook Receiver
+          <span class="rate-pill">Rate Limit: 10 req / min</span>
+        </h1>
+        <p>
+          Send HTTP requests from external providers to your generated webhook ID.
+          Records are verified, persisted to PostgreSQL, and pushed live via Server-Sent Events (SSE).
+        </p>
+      </div>
+
+      <div class="hero-actions">
+        <button id="btnCreateWebhook" class="btn btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Create Webhook ID
+        </button>
+        <button id="btnQuickCurl" class="btn btn-secondary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
+          Test Delivery (cURL)
+        </button>
+      </div>
+    </section>
+
+    <!-- Metrics Cards -->
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <div class="metric-title">Total Deliveries</div>
+        <div id="metricTotalDeliveries" class="metric-value">0</div>
+        <div class="metric-sub">Processed in current session</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Active Channels</div>
+        <div id="metricActiveWebhooks" class="metric-value">0</div>
+        <div class="metric-sub">Registered webhook targets</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Rate Limiter Window</div>
+        <div class="metric-value" style="color: #a5b4fc;">10 / min</div>
+        <div class="metric-sub">Enforced per target ID</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-title">Last Delivery</div>
+        <div id="metricLastDelivery" class="metric-value" style="font-size: 1.15rem; padding-top: 0.4rem;">None</div>
+        <div class="metric-sub">Real-time SSE synced</div>
+      </div>
+    </div>
+
+    <!-- Controls / Filters -->
+    <div class="controls-bar">
+      <div class="filter-group">
+        <label for="webhookFilter" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Filter Target:</label>
+        <select id="webhookFilter" class="select-input" style="min-width: 260px;">
+          <option value="all">🌐 All Webhook Channels (Global Feed)</option>
+        </select>
+        <button id="btnRefresh" class="btn btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
+          ↻ Refresh
+        </button>
+      </div>
+
+      <div class="filter-group">
+        <button id="btnClearTable" class="btn btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.8rem;">
+          Clear View
+        </button>
+      </div>
+    </div>
+
+    <!-- Live Deliveries Table (Sorted by created_at DESC) -->
+    <div class="table-container">
+      <table id="deliveriesTable">
+        <thead>
+          <tr>
+            <th style="width: 170px;">Received At</th>
+            <th style="width: 90px;">Method</th>
+            <th style="width: 220px;">Webhook Target</th>
+            <th style="width: 140px;">Client IP</th>
+            <th>Payload Preview</th>
+            <th style="width: 110px; text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="deliveriesBody">
+          <!-- Populated by JavaScript and SSE -->
+        </tbody>
+      </table>
+
+      <div id="emptyState" class="empty-state">
+        <div class="empty-state-icon">📡</div>
+        <h3>No Webhooks Received Yet</h3>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">
+          Generate a Webhook ID above and dispatch requests to <code style="color: #a5b4fc;">/api/webhooks/:id/incoming</code>.
+        </p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Create Webhook Modal -->
+  <div id="createWebhookModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>⚡</span> Generate New Webhook Endpoint
+        </div>
+        <button class="modal-close" onclick="closeModal('createWebhookModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.4rem;">
+            Webhook Label / Name (optional)
+          </label>
+          <input type="text" id="newWebhookName" class="text-input" placeholder="e.g., Stripe Payout Events" style="width: 100%;">
+        </div>
+
+        <div id="createdWebhookResult" style="display: none; margin-top: 1.5rem;">
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1rem;">
+            <div style="color: #34d399; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.25rem;">✓ Webhook Endpoint Ready!</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted);">Rate limiter active: 10 requests / minute max.</div>
+          </div>
+
+          <label style="display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.3rem;">Target Inbound URL:</label>
+          <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+            <input type="text" id="createdWebhookUrl" class="text-input mono-cell" readonly style="width: 100%;">
+            <button class="btn btn-secondary" onclick="copyInput('createdWebhookUrl')">Copy</button>
+          </div>
+
+          <label style="display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.3rem;">Ready-to-run Test cURL:</label>
+          <div class="code-box" id="createdWebhookCurl"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('createWebhookModal')">Close</button>
+        <button id="btnSubmitCreateWebhook" class="btn btn-primary">Generate Webhook</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delivery Inspector Modal -->
+  <div id="inspectModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span id="inspectMethodBadge" class="badge-method badge-post">POST</span>
+          <span id="inspectTitle">Webhook Delivery Details</span>
+        </div>
+        <button class="modal-close" onclick="closeModal('inspectModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-tabs">
+          <button class="modal-tab active" onclick="switchInspectTab('body')">Payload Body</button>
+          <button class="modal-tab" onclick="switchInspectTab('headers')">Headers</button>
+          <button class="modal-tab" onclick="switchInspectTab('query')">Query Params</button>
+          <button class="modal-tab" onclick="switchInspectTab('metadata')">Metadata & IP</button>
+        </div>
+
+        <div id="tabContentBody">
+          <div class="code-box" id="inspectBodyCode"></div>
+        </div>
+        <div id="tabContentHeaders" style="display: none;">
+          <div class="code-box" id="inspectHeadersCode"></div>
+        </div>
+        <div id="tabContentQuery" style="display: none;">
+          <div class="code-box" id="inspectQueryCode"></div>
+        </div>
+        <div id="tabContentMetadata" style="display: none;">
+          <div class="code-box" id="inspectMetadataCode"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <span id="copyFeedback" class="copy-success">✓ Copied to clipboard</span>
+        <button class="btn btn-secondary" onclick="copyActiveInspectJson()">Copy JSON</button>
+        <button class="btn btn-primary" onclick="closeModal('inspectModal')">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Test cURL Modal -->
+  <div id="testCurlModal" class="modal-backdrop">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>⚡</span> Quick Test Delivery cURL
+        </div>
+        <button class="modal-close" onclick="closeModal('testCurlModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem;">
+          Run this cURL in your terminal to dispatch a simulated payment webhook event directly to the server:
+        </p>
+        <div class="code-box" id="quickCurlBox"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('testCurlModal')">Close</button>
+        <button class="btn btn-primary" onclick="copyBox('quickCurlBox')">Copy cURL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container"></div>
+
+  <script>
+    // State
+    let webhooksList = [];
+    let deliveries = [];
+    let activeDelivery = null;
+    let eventSource = null;
+    let selectedWebhookId = 'all';
+
+    // Elements
+    const sseBadge = document.getElementById('sseStatusBadge');
+    const sseText = document.getElementById('sseStatusText');
+    const deliveriesBody = document.getElementById('deliveriesBody');
+    const emptyState = document.getElementById('emptyState');
+    const webhookFilter = document.getElementById('webhookFilter');
+    const metricTotalDeliveries = document.getElementById('metricTotalDeliveries');
+    const metricActiveWebhooks = document.getElementById('metricActiveWebhooks');
+    const metricLastDelivery = document.getElementById('metricLastDelivery');
+
+    // Initialize
+    async function init() {
+      await loadWebhooks();
+      await loadLogs();
+      connectSSE();
+    }
+
+    // Load webhooks list
+    async function loadWebhooks() {
+      try {
+        const res = await fetch('/api/webhooks');
+        const json = await res.json();
+        if (json.success && json.data) {
+          webhooksList = json.data;
+          metricActiveWebhooks.textContent = webhooksList.filter(w => w.status === 'active').length;
+          populateWebhookDropdown();
+        }
+      } catch (err) {
+        console.error('Failed to load webhooks:', err);
+      }
+    }
+
+    function populateWebhookDropdown() {
+      const currentVal = webhookFilter.value;
+      webhookFilter.innerHTML = '<option value="all">🌐 All Webhook Channels (Global Feed)</option>';
+
+      webhooksList.forEach(w => {
+        const opt = document.createElement('option');
+        opt.value = w.id;
+        const nameLabel = w.name ? `${w.name} (${w.id.slice(0, 8)}...)` : `ID: ${w.id.slice(0, 8)}...`;
+        opt.textContent = `${nameLabel} [${w.status}]`;
+        webhookFilter.appendChild(opt);
+      });
+
+      webhookFilter.value = currentVal || 'all';
+    }
+
+    // Load logs sorted by created_at DESC
+    async function loadLogs() {
+      try {
+        const url = selectedWebhookId === 'all'
+          ? '/api/webhooks-logs?limit=100'
+          : `/api/webhooks/${selectedWebhookId}/logs?limit=100`;
+
+        const res = await fetch(url);
+        const json = await res.json();
+
+        if (json.success && json.data) {
+          deliveries = json.data;
+          renderTable();
+          updateMetrics();
+        }
+      } catch (err) {
+        console.error('Failed to load logs:', err);
+      }
+    }
+
+    // Connect SSE
+    function connectSSE() {
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      const streamUrl = selectedWebhookId === 'all'
+        ? '/api/webhooks/stream'
+        : `/api/webhooks/${selectedWebhookId}/stream`;
+
+      sseBadge.className = 'sse-badge connecting';
+      sseText.textContent = 'Connecting SSE...';
+
+      eventSource = new EventSource(streamUrl);
+
+      eventSource.onopen = () => {
+        sseBadge.className = 'sse-badge connected';
+        sseText.textContent = 'SSE Live Connected';
+      };
+
+      eventSource.addEventListener('connected', (e) => {
+        sseBadge.className = 'sse-badge connected';
+        sseText.textContent = 'SSE Live Connected';
+      });
+
+      eventSource.addEventListener('webhook_received', (e) => {
+        try {
+          const newDelivery = JSON.parse(e.data);
+          handleIncomingDelivery(newDelivery);
+        } catch (err) {
+          console.error('Error parsing SSE event:', err);
+        }
+      });
+
+      eventSource.onerror = () => {
+        sseBadge.className = 'sse-badge connecting';
+        sseText.textContent = 'Reconnecting...';
+      };
+    }
+
+    // Prepend incoming webhook to table
+    function handleIncomingDelivery(delivery) {
+      // Check if matches active filter
+      if (selectedWebhookId !== 'all' && delivery.webhook_id !== selectedWebhookId) {
+        return;
+      }
+
+      // Check for duplicates
+      if (deliveries.some(d => d.id === delivery.id)) return;
+
+      deliveries.unshift(delivery);
+      updateMetrics();
+
+      if (emptyState) emptyState.style.display = 'none';
+
+      const tr = createRowElement(delivery);
+      tr.classList.add('row-incoming');
+      deliveriesBody.insertBefore(tr, deliveriesBody.firstChild);
+
+      showToast(`⚡ New Webhook received: ${delivery.method} (${delivery.webhook_id.slice(0, 8)}...)`);
+    }
+
+    // Render table
+    function renderTable() {
+      deliveriesBody.innerHTML = '';
+
+      if (!deliveries || deliveries.length === 0) {
+        emptyState.style.display = 'block';
+        return;
+      }
+
+      emptyState.style.display = 'none';
+      deliveries.forEach(del => {
+        const tr = createRowElement(del);
+        deliveriesBody.appendChild(tr);
+      });
+    }
+
+    function createRowElement(del) {
+      const tr = document.createElement('tr');
+      tr.id = `row-${del.id}`;
+
+      // Date formatting
+      const dateObj = new Date(del.created_at || Date.now());
+      const relativeTime = getRelativeTime(dateObj);
+      const exactTime = dateObj.toLocaleTimeString();
+
+      // Method badge
+      const method = (del.method || 'POST').toUpperCase();
+      let badgeClass = 'badge-post';
+      if (method === 'GET') badgeClass = 'badge-get';
+      else if (method === 'PUT') badgeClass = 'badge-put';
+      else if (method === 'DELETE') badgeClass = 'badge-delete';
+      else if (method === 'PATCH') badgeClass = 'badge-patch';
+
+      // Preview text
+      let preview = '';
+      if (del.body) {
+        try {
+          const bodyObj = typeof del.body === 'string' ? JSON.parse(del.body) : del.body;
+          preview = JSON.stringify(bodyObj);
+        } catch {
+          preview = String(del.body);
+        }
+      } else if (del.raw_body) {
+        preview = del.raw_body;
+      } else {
+        preview = '(empty body)';
+      }
+
+      const targetLabel = del.webhook_name
+        ? `${escapeHtml(del.webhook_name)} <br><span class="time-exact">${del.webhook_id.slice(0, 8)}...</span>`
+        : `<span class="mono-cell">${del.webhook_id ? del.webhook_id.slice(0, 13) + '...' : 'Unknown'}</span>`;
+
+      tr.innerHTML = `
+        <td>
+          <div class="time-cell">
+            <span class="time-relative">${relativeTime}</span>
+            <span class="time-exact">${exactTime}</span>
+          </div>
+        </td>
+        <td>
+          <span class="badge-method ${badgeClass}">${method}</span>
+        </td>
+        <td>
+          ${targetLabel}
+        </td>
+        <td class="mono-cell">
+          ${escapeHtml(del.ip || '127.0.0.1')}
+        </td>
+        <td>
+          <div class="preview-pill" title="${escapeHtml(preview)}">${escapeHtml(preview)}</div>
+        </td>
+        <td style="text-align: right;">
+          <button class="btn-inspect" onclick="inspectDelivery('${del.id}')">Inspect</button>
+        </td>
+      `;
+
+      return tr;
+    }
+
+    function updateMetrics() {
+      metricTotalDeliveries.textContent = deliveries.length;
+      if (deliveries.length > 0) {
+        const lastDate = new Date(deliveries[0].created_at);
+        metricLastDelivery.textContent = lastDate.toLocaleTimeString();
+      } else {
+        metricLastDelivery.textContent = 'None';
+      }
+    }
+
+    // Inspect Delivery Modal
+    window.inspectDelivery = function(id) {
+      activeDelivery = deliveries.find(d => d.id === id);
+      if (!activeDelivery) return;
+
+      document.getElementById('inspectTitle').textContent = `Delivery: ${activeDelivery.id.slice(0, 8)}...`;
+      const badge = document.getElementById('inspectMethodBadge');
+      badge.textContent = activeDelivery.method;
+      badge.className = `badge-method badge-${(activeDelivery.method || 'post').toLowerCase()}`;
+
+      // Tab contents
+      document.getElementById('inspectBodyCode').textContent = formatJson(activeDelivery.body || activeDelivery.raw_body || {});
+      document.getElementById('inspectHeadersCode').textContent = formatJson(activeDelivery.headers || {});
+      document.getElementById('inspectQueryCode').textContent = formatJson(activeDelivery.query || {});
+      document.getElementById('inspectMetadataCode').textContent = formatJson({
+        ip: activeDelivery.ip,
+        metadata: activeDelivery.metadata,
+        created_at: activeDelivery.created_at,
+        webhook_id: activeDelivery.webhook_id
+      });
+
+      switchInspectTab('body');
+      openModal('inspectModal');
+    };
+
+    window.switchInspectTab = function(tab) {
+      const tabs = ['body', 'headers', 'query', 'metadata'];
+      tabs.forEach(t => {
+        document.getElementById(`tabContent${capitalize(t)}`).style.display = t === tab ? 'block' : 'none';
+      });
+
+      document.querySelectorAll('.modal-tab').forEach((el, idx) => {
+        el.classList.toggle('active', tabs[idx] === tab);
+      });
+    };
+
+    window.copyActiveInspectJson = function() {
+      if (!activeDelivery) return;
+      navigator.clipboard.writeText(JSON.stringify(activeDelivery, null, 2));
+      const fb = document.getElementById('copyFeedback');
+      fb.style.display = 'inline';
+      setTimeout(() => { fb.style.display = 'none'; }, 2000);
+    };
+
+    // Filter change
+    webhookFilter.addEventListener('change', () => {
+      selectedWebhookId = webhookFilter.value;
+      loadLogs();
+      connectSSE();
+    });
+
+    document.getElementById('btnRefresh').addEventListener('click', async () => {
+      await loadWebhooks();
+      await loadLogs();
+      showToast('Data refreshed');
+    });
+
+    document.getElementById('btnClearTable').addEventListener('click', () => {
+      deliveries = [];
+      renderTable();
+      updateMetrics();
+      showToast('View cleared');
+    });
+
+    // Create Webhook
+    document.getElementById('btnCreateWebhook').addEventListener('click', () => {
+      document.getElementById('newWebhookName').value = '';
+      document.getElementById('createdWebhookResult').style.display = 'none';
+      document.getElementById('btnSubmitCreateWebhook').style.display = 'inline-flex';
+      openModal('createWebhookModal');
+    });
+
+    document.getElementById('btnSubmitCreateWebhook').addEventListener('click', async () => {
+      const name = document.getElementById('newWebhookName').value.trim();
+      try {
+        const res = await fetch('/api/webhooks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const json = await res.json();
+        if (json.success && json.data) {
+          const webhook = json.data;
+          await loadWebhooks();
+
+          document.getElementById('createdWebhookUrl').value = webhook.webhook_url;
+          document.getElementById('createdWebhookCurl').textContent = 
+`curl -X POST "${webhook.webhook_url}" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "event": "payment_succeeded",
+    "amount": 250000,
+    "currency": "IDR",
+    "customer": { "id": "cust_101", "name": "Budi Santoso" }
+  }'`;
+
+          document.getElementById('createdWebhookResult').style.display = 'block';
+          document.getElementById('btnSubmitCreateWebhook').style.display = 'none';
+
+          // Select this webhook
+          webhookFilter.value = webhook.id;
+          selectedWebhookId = webhook.id;
+          connectSSE();
+
+          showToast('Webhook endpoint created successfully!');
+        } else {
+          alert(json.message || 'Failed to create webhook');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('Error creating webhook: ' + err.message);
+      }
+    });
+
+    // Quick cURL Modal
+    document.getElementById('btnQuickCurl').addEventListener('click', () => {
+      const activeId = selectedWebhookId !== 'all' ? selectedWebhookId : (webhooksList[0]?.id || '<WEBHOOK_ID>');
+      const origin = window.location.origin;
+      document.getElementById('quickCurlBox').textContent =
+`curl -X POST "${origin}/api/webhooks/${activeId}/incoming" \\
+  -H "Content-Type: application/json" \\
+  -H "X-Custom-Signature: sha256=mock_sig_981247" \\
+  -d '{
+    "event": "order.completed",
+    "order_id": "ORD-9901",
+    "amount": 150000,
+    "status": "PAID"
+  }'`;
+      openModal('testCurlModal');
+    });
+
+    // Helpers
+    function openModal(id) {
+      document.getElementById(id).classList.add('open');
+    }
+
+    window.closeModal = function(id) {
+      document.getElementById(id).classList.remove('open');
+    };
+
+    window.copyInput = function(id) {
+      const el = document.getElementById(id);
+      navigator.clipboard.writeText(el.value);
+      showToast('URL copied to clipboard!');
+    };
+
+    window.copyBox = function(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text);
+      showToast('cURL copied to clipboard!');
+    };
+
+    function showToast(msg) {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.textContent = msg;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    function formatJson(data) {
+      try {
+        const obj = typeof data === 'string' ? JSON.parse(data) : data;
+        return JSON.stringify(obj, null, 2);
+      } catch {
+        return String(data);
+      }
+    }
+
+    function getRelativeTime(d) {
+      const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+      if (diffSec < 5) return 'Just now';
+      if (diffSec < 60) return `${diffSec}s ago`;
+      const diffMin = Math.floor(diffSec / 60);
+      if (diffMin < 60) return `${diffMin}m ago`;
+      const diffHr = Math.floor(diffMin / 60);
+      return `${diffHr}h ago`;
+    }
+
+    function capitalize(s) {
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Run init on DOM ready
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
